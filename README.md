@@ -43,3 +43,19 @@ Unit tests cover price conversion, stale/duplicate sequences, partial updates, u
 Next: verify the portfolio on your target device, measure rendering, then implement sorting and the watchlist before stock detail/orders. With another day after the core, prioritize device profiling, lifecycle handling, accessibility, and more feed/transaction tests before optional features.
 
 Time spent: not yet recorded; update with actual working time before submission.
+
+## Code map and conventions
+
+- `App.tsx`: starts/stops the shared price feed and mounts the screen.
+- `src/features/portfolio/PortfolioScreen.tsx`: page layout and connection/error states.
+- `src/features/portfolio/HoldingsList.tsx`: filtering and list configuration.
+- `src/features/portfolio/HoldingRow.tsx`: one position and its symbol subscription.
+- `src/features/portfolio/PortfolioSummary.tsx`: portfolio totals and missing-price explanation.
+- `src/features/portfolio/styles.ts`: portfolio layout styles.
+- `src/theme/theme.ts`: shared system-based color palettes.
+- `src/state/market.ts`: quote snapshots, subscriptions, request lifecycle and feed health.
+- `src/domain/portfolio.ts`: pure calculation and tick-merge functions.
+- `src/data/`: seed holdings and validated REST data.
+- `src/feed/`: replaceable feed contract and simulator implementation.
+
+Keep components focused on one responsibility. Give lifecycle/timing values explicit names. Comments explain business rules and non-obvious performance or lifecycle decisions. Keep calculations outside components so they can be tested without a device. Use `npm run format` to format code and `npm run format:check` to check it. Add future screens alongside portfolio under `src/features/`, sharing domain, state, and theme modules.

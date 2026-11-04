@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
+    "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -18,7 +19,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "format": "prettier --write App.tsx index.ts src tests",
+    "format:check": "prettier --check App.tsx index.ts src tests"
   },
   "private": true
 }

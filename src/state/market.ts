@@ -1,57 +1,121 @@
 import { useSyncExternalStore } from 'react';
 import { fetchQuotes } from '../data/api';
-import { mergeTick, type Quote } from '../domain/portfolio';
+import { mergeTick, type Quote, type Tick } from '../domain/portfolio';
 import { createSimulator, type PriceFeed } from '../feed/simulator';
 
+type MarketStatus = Readonly<{
+  loading: boolean;
+  error?: string;
+  paused: boolean;
+}>;
+
+const PAUSED_AFTER_MS = 2_000;
+const HEALTH_CHECK_INTERVAL_MS = 500;
 const listeners = new Set<() => void>();
+
+// Quotes and status have separate snapshot identities. A price tick should not
+// render components that only care about connection/loading status.
 let quotes: Readonly<Record<string, Quote>> = {};
-let status: Readonly<{ loading: boolean; error?: string; paused: boolean }> = { loading: true, paused: false };
+let status: MarketStatus = { loading: true, paused: false };
 let feed: PriceFeed | undefined;
-let unsubscribe: (() => void) | undefined;
-let watchdog: ReturnType<typeof setInterval> | undefined;
-let lastTick = 0;
-let generation = 0;
-const emit = () => { for (const listener of listeners) listener(); };
-const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
-export function useQuote(symbol: string) {
-  return useSyncExternalStore(subscribe, () => quotes[symbol]);
-}
-export function useQuotes() { return useSyncExternalStore(subscribe, () => quotes); }
-export function useMarketStatus() { return useSyncExternalStore(subscribe, () => status); }
-function stopFeed() {
-  feed?.disconnect(); unsubscribe?.();
-  if (watchdog) clearInterval(watchdog);
-  watchdog = undefined;
-}
-export async function loadMarket() {
-  const request = ++generation;
-  stopFeed();
-  status = { loading: true, paused: false }; emit();
-  try {
-    const received = await fetchQuotes();
-    if (request !== generation) return;
-    quotes = received;
-    status = { loading: false, paused: false };
-    lastTick = Date.now();
-    feed = createSimulator(received);
-    unsubscribe = feed.onTick(tick => {
-      const merged = mergeTick(quotes[tick.symbol], tick);
-      if (merged === quotes[tick.symbol] || !merged) return;
-      quotes = { ...quotes, [tick.symbol]: merged };
-      lastTick = Date.now();
-      if (status.paused) status = { ...status, paused: false };
-      emit();
-    });
-    feed.connect();
-    watchdog = setInterval(() => {
-      const paused = Date.now() - lastTick > 2000;
-      if (paused !== status.paused) { status = { ...status, paused }; emit(); }
-    }, 500);
-    emit();
-  } catch (error: unknown) {
-    if (request !== generation) return;
-    status = { loading: false, paused: true, error: error instanceof Error ? error.message : 'Could not load prices.' };
-    emit();
+let unsubscribeFromFeed: (() => void) | undefined;
+let healthCheckTimer: ReturnType<typeof setInterval> | undefined;
+let lastAcceptedTickAt = 0;
+let requestGeneration = 0;
+
+function notifySubscribers(): void {
+  for (const listener of listeners) {
+    listener();
   }
 }
-export function stopMarket() { generation++; stopFeed(); }
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** A row reads one quote; unrelated quotes retain their object identity. */
+export function useQuote(symbol: string): Quote | undefined {
+  return useSyncExternalStore(subscribe, () => quotes[symbol]);
+}
+
+/** Use only for views, such as the summary, that need every price update. */
+export function useQuotes(): Readonly<Record<string, Quote>> {
+  return useSyncExternalStore(subscribe, () => quotes);
+}
+
+export function useMarketStatus(): MarketStatus {
+  return useSyncExternalStore(subscribe, () => status);
+}
+
+function stopFeed(): void {
+  feed?.disconnect();
+  unsubscribeFromFeed?.();
+  if (healthCheckTimer) clearInterval(healthCheckTimer);
+  feed = undefined;
+  unsubscribeFromFeed = undefined;
+  healthCheckTimer = undefined;
+}
+
+function handleTick(tick: Tick): void {
+  const previousQuote = quotes[tick.symbol];
+  const updatedQuote = mergeTick(previousQuote, tick);
+
+  // Rejected ticks keep the same reference and must not notify React.
+  if (!updatedQuote || updatedQuote === previousQuote) return;
+
+  quotes = { ...quotes, [tick.symbol]: updatedQuote };
+  lastAcceptedTickAt = Date.now();
+  if (status.paused) status = { ...status, paused: false };
+  notifySubscribers();
+}
+
+function checkFeedHealth(): void {
+  const paused = Date.now() - lastAcceptedTickAt > PAUSED_AFTER_MS;
+  if (paused === status.paused) return;
+
+  status = { ...status, paused };
+  notifySubscribers();
+}
+
+export async function loadMarket(): Promise<void> {
+  // A newer refresh or unmount invalidates older requests, even if they finish later.
+  const currentRequest = ++requestGeneration;
+  stopFeed();
+  status = { loading: true, paused: false };
+  notifySubscribers();
+
+  try {
+    const receivedQuotes = await fetchQuotes();
+    if (currentRequest !== requestGeneration) return;
+
+    quotes = receivedQuotes;
+    status = { loading: false, paused: false };
+    lastAcceptedTickAt = Date.now();
+
+    // This is the only place that chooses the feed implementation. Screens use
+    // quotes, not the simulator, so a real socket can replace it here later.
+    feed = createSimulator(receivedQuotes);
+    unsubscribeFromFeed = feed.onTick(handleTick);
+    feed.connect();
+    healthCheckTimer = setInterval(checkFeedHealth, HEALTH_CHECK_INTERVAL_MS);
+    notifySubscribers();
+  } catch (error: unknown) {
+    if (currentRequest !== requestGeneration) return;
+
+    // Preserve previously fetched quotes on a refresh error; label them paused.
+    status = {
+      loading: false,
+      paused: true,
+      error: error instanceof Error ? error.message : 'Could not load prices.',
+    };
+    notifySubscribers();
+  }
+}
+
+export function stopMarket(): void {
+  requestGeneration++;
+  stopFeed();
+}

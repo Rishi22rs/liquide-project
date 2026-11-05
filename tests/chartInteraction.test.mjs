@@ -91,3 +91,29 @@ test('crosshair and graph share the same price/time coordinates in a zoomed wind
   assert.equal(crosshair.y, 10);
   assert.ok(chart.line.startsWith('M35.00,10.00'));
 });
+
+test('live window compresses up to one minute then follows the newest tick', async () => {
+  const { followingChartWindow } = await import('../src/domain/chartInteraction.ts');
+  assert.deepEqual(followingChartWindow({ start: 1000, end: 31000 }), {
+    start: 1000,
+    end: 31000,
+  });
+  assert.deepEqual(followingChartWindow({ start: 1000, end: 121000 }), {
+    start: 61000,
+    end: 121000,
+  });
+});
+
+test('horizontal scrolling preserves scale and clamps at both history edges', async () => {
+  const { panChartWindow } = await import('../src/domain/chartInteraction.ts');
+  const bounds = { start: 0, end: 120000 };
+  const current = { start: 60000, end: 120000 };
+  assert.deepEqual(panChartWindow(bounds, current, 150, 300), {
+    start: 30000,
+    end: 90000,
+  });
+  assert.deepEqual(panChartWindow(bounds, current, 1000, 300), { start: 0, end: 60000 });
+  assert.deepEqual(panChartWindow(bounds, current, -1000, 300), current);
+  assert.deepEqual(panChartWindow(bounds, bounds, 100, 300), bounds);
+  assert.equal(panChartWindow(bounds, current, 50, 0), current);
+});

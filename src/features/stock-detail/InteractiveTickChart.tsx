@@ -82,7 +82,7 @@ export const InteractiveTickChart = memo(function InteractiveTickChart({
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.line }]}>
       <View style={styles.cardTop}>
         <Text style={[styles.eyebrow, { color: theme.muted }]}>LIVE PRICE</Text>
-        {timeWindow || selected ? (
+        {interaction.isExploring || selected ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Reset chart view"
@@ -126,7 +126,7 @@ export const InteractiveTickChart = memo(function InteractiveTickChart({
         accessible
         accessibilityRole="adjustable"
         accessibilityLabel="Interactive price chart"
-        accessibilityHint="Drag to inspect recorded prices. Pinch with two fingers to zoom."
+        accessibilityHint="Swipe sideways to scroll history. Hold then drag to inspect exact prices. Pinch with two fingers to zoom."
         accessibilityState={{ disabled: points.length === 0 }}
         accessibilityValue={{
           min: 0,
@@ -292,7 +292,7 @@ export const InteractiveTickChart = memo(function InteractiveTickChart({
         </>
       )}
       <Text style={[chartStyles.help, { color: theme.muted }]}>
-        Pinch to zoom · Touch and drag to inspect
+        Swipe to scroll · Hold to inspect · Pinch to zoom
       </Text>
     </View>
   );

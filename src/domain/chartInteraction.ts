@@ -2,6 +2,33 @@ import type { ChartPoint } from './tickHistory';
 
 export type ChartTimeWindow = Readonly<{ start: number; end: number }>;
 export const MAX_CHART_ZOOM = 16;
+// Show the whole session initially. After one minute, keep a readable moving
+// window rather than squeezing every incoming tick into the same width.
+export const LIVE_CHART_SPAN_MS = 60_000;
+
+export function followingChartWindow(bounds: ChartTimeWindow): ChartTimeWindow {
+  return {
+    start: Math.max(bounds.start, bounds.end - LIVE_CHART_SPAN_MS),
+    end: bounds.end,
+  };
+}
+
+/** Curve follows the finger: a right swipe reveals earlier recorded ticks. */
+export function panChartWindow(
+  bounds: ChartTimeWindow,
+  current: ChartTimeWindow,
+  deltaX: number,
+  width: number,
+): ChartTimeWindow {
+  if (width <= 0 || !Number.isFinite(deltaX)) return current;
+  const span = Math.min(current.end - current.start, bounds.end - bounds.start);
+  const start = clamp(
+    current.start - (deltaX / width) * span,
+    bounds.start,
+    bounds.end - span,
+  );
+  return { start, end: start + span };
+}
 
 export function chartTimeBounds(
   points: readonly ChartPoint[],

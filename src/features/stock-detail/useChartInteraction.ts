@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { PanResponder, View, type GestureResponderEvent } from 'react-native';
 import {
   chartTimeBounds,
+  followingChartWindow,
+  panChartWindow,
   chartTouchFraction,
   nearestChartPoint,
   zoomChartWindow,
@@ -36,14 +38,20 @@ export function useChartInteraction(
   const [selected, setSelected] = useState<ChartPoint>();
   const pointsRef = useRef(points);
   pointsRef.current = points;
-  const windowRef = useRef(timeWindow);
-  windowRef.current = timeWindow;
+  const fullBounds = chartTimeBounds(points);
+  const displayedWindow =
+    timeWindow ?? (fullBounds ? followingChartWindow(fullBounds) : undefined);
+  const windowRef = useRef(displayedWindow);
+  windowRef.current = displayedWindow;
+  const drag = useRef<
+    | { x: number; y: number; startedAt: number; mode?: 'pan' | 'inspect' | 'vertical' }
+    | undefined
+  >(undefined);
   const callbackRef = useRef(onInteractionChange);
   callbackRef.current = onInteractionChange;
   const origin = useRef({ x: 0, width: 0, ready: false });
   const pinch = useRef<PinchStart | undefined>(undefined);
   const gestureWindow = useRef<ChartTimeWindow | undefined>(undefined);
-  const manualBounds = useRef<ChartTimeWindow | undefined>(undefined);
   const gestureBounds = useRef<ChartTimeWindow | undefined>(undefined);
   const active = useRef(false);
 
@@ -65,6 +73,7 @@ export function useChartInteraction(
     )
       return;
     if (touches.length >= 2) {
+      drag.current = undefined;
       const distance = fingerDistance(touches);
       const focus = touchFraction((touches[0]!.pageX + touches[1]!.pageX) / 2);
       if (!pinch.current) {
@@ -87,6 +96,35 @@ export function useChartInteraction(
       );
       setSelected(undefined);
     } else {
+      const touch = touches[0]!;
+      // A quick sideways swipe scrolls history; holding first keeps the existing
+      // exact-value scrub gesture. Lock the mode until the finger is lifted.
+      drag.current ??= { x: touch.pageX, y: touch.pageY, startedAt: Date.now() };
+      const start = drag.current;
+      const dx = touch.pageX - start.x;
+      const dy = touch.pageY - start.y;
+      if (!start.mode) {
+        if (Date.now() - start.startedAt >= 350) start.mode = 'inspect';
+        else if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) start.mode = 'pan';
+        else if (Math.abs(dy) > 8) start.mode = 'vertical';
+      }
+      if (start.mode === 'vertical') {
+        setSelected(undefined);
+        callbackRef.current(false);
+        return;
+      }
+      if (start.mode === 'pan') {
+        updateWindow(
+          panChartWindow(
+            gestureBounds.current,
+            gestureWindow.current,
+            dx,
+            (origin.current.width * 300) / 320,
+          ),
+        );
+        setSelected(undefined);
+        return;
+      }
       // After a pinch, one remaining finger inspects the newly zoomed window.
       pinch.current = undefined;
       const current = windowRef.current ?? gestureWindow.current;
@@ -97,6 +135,7 @@ export function useChartInteraction(
   }
 
   function finishGesture() {
+    drag.current = undefined;
     active.current = false;
     origin.current.ready = false;
     pinch.current = undefined;
@@ -114,13 +153,12 @@ export function useChartInteraction(
       onPanResponderGrant: (event) => {
         const bounds = chartTimeBounds(pointsRef.current);
         if (!bounds) return;
+        drag.current = undefined;
         active.current = true;
         callbackRef.current(true);
-        // Freeze the time domain while inspecting so new ticks cannot move the
-        // selected value under the finger. Reset returns to following all incoming ticks.
-        manualBounds.current ??= bounds;
-        gestureBounds.current = manualBounds.current;
-        gestureWindow.current = windowRef.current ?? manualBounds.current;
+        // Freeze only this gesture's bounds. Future swipes can reach new ticks.
+        gestureBounds.current = bounds;
+        gestureWindow.current = windowRef.current ?? followingChartWindow(bounds);
         updateWindow(gestureWindow.current);
         const touches = readTouches(event);
         frameRef.current?.measureInWindow((x, _y, width) => {
@@ -139,13 +177,12 @@ export function useChartInteraction(
       },
       onPanResponderRelease: finishGesture,
       onPanResponderTerminate: finishGesture,
-      onPanResponderTerminationRequest: () => false,
+      onPanResponderTerminationRequest: () => drag.current?.mode === 'vertical',
     }),
   ).current;
 
   function reset() {
     windowRef.current = undefined;
-    manualBounds.current = undefined;
     setTimeWindow(undefined);
     setSelected(undefined);
   }
@@ -158,7 +195,6 @@ export function useChartInteraction(
     );
     if (visible.length === 0) return;
     const index = selected ? visible.indexOf(selected) : visible.length - 1;
-    manualBounds.current ??= chartTimeBounds(pointsRef.current);
     updateWindow(bounds);
     setSelected(visible[Math.max(0, Math.min(visible.length - 1, index + direction))]);
   }
@@ -172,9 +208,10 @@ export function useChartInteraction(
 
   return {
     frameRef,
-    referenceBounds: manualBounds.current,
+    referenceBounds: fullBounds,
+    isExploring: timeWindow !== undefined,
     panHandlers: responder.panHandlers,
-    timeWindow,
+    timeWindow: displayedWindow,
     selected,
     reset,
     stepSelection,

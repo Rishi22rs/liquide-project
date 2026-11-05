@@ -41,7 +41,7 @@ export function LimitOrderStatus({ order, theme }: { order: LimitOrder; theme: T
 }
 
 /** Current-session orders remain accessible after closing the trade sheet.
- * Persistent history is a separate bonus; this view deliberately says session. */
+ * The persisted Orders tab holds the full archive; this is a compact session view. */
 export function LimitOrders({ symbol, theme }: { symbol: string; theme: Theme }) {
   const orders = useLimitOrders().filter((order) => order.symbol === symbol);
   if (!orders.length) return null;

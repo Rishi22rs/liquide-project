@@ -29,6 +29,10 @@ export type LimitOrder = LimitOrderRequest &
 export type LimitOrderResult =
   { ok: true; order: LimitOrder } | { ok: false; error: string };
 
+export type TradingEvent =
+  | Readonly<{ type: 'market'; fill: TradeFill }>
+  | Readonly<{ type: 'limit'; order: LimitOrder; updatedAt: number }>;
+
 /** Parse decimal rupees directly to paise without floating-point multiplication. */
 export function parseLimitPrice(input: string): number | undefined {
   if (input.trim().length > 32 || !/^\d+(?:\.\d{1,2})?$/.test(input.trim()))
@@ -133,6 +137,7 @@ export function createTradingStore(
   getQuote: (symbol: string) => Quote | undefined,
   allowedSymbols: readonly string[],
   now: () => number = Date.now,
+  onOrder: (event: TradingEvent) => void = () => {},
 ) {
   let holdings: readonly Holding[] = [...initialHoldings];
   const listeners = new Set<() => void>();
@@ -241,7 +246,10 @@ export function createTradingStore(
     }
     filledRequests.set(request.id, { request: { ...request }, fill });
     holdings = nextHoldings;
-    if (!matchingId) listeners.forEach((listener) => listener());
+    if (!matchingId) {
+      onOrder({ type: 'market', fill });
+      listeners.forEach((listener) => listener());
+    }
     return { ok: true, fill };
   }
 
@@ -298,6 +306,7 @@ export function createTradingStore(
         };
       const order: LimitOrder = { ...request, placedAt: now(), status: 'pending' };
       orders = [...orders, order];
+      onOrder({ type: 'limit', order, updatedAt: order.placedAt });
       publishOrders();
       return { ok: true, order };
     },
@@ -307,6 +316,8 @@ export function createTradingStore(
       orders = orders.map((order) =>
         order.id === id ? { ...order, status: 'cancelled' } : order,
       );
+      const cancelled = orders.find((order) => order.id === id);
+      if (cancelled) onOrder({ type: 'limit', order: cancelled, updatedAt: now() });
       publishOrders();
       return true;
     },
@@ -328,6 +339,7 @@ export function createTradingStore(
           ? { ...order, status: 'filled', fill: result.fill }
           : { ...order, status: 'rejected', error: result.error };
         orders = orders.map((item) => (item.id === order.id ? updated : item));
+        onOrder({ type: 'limit', order: updated, updatedAt: now() });
         changed = true;
         holdingsChanged ||= result.ok;
       }

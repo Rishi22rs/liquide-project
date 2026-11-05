@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { orderHistoryStore, tradingSessionId } from './orderHistory';
 import { HOLDINGS, SYMBOLS } from '../data/holdings';
 import { createTradingStore } from '../domain/trading';
 import { getQuotesSnapshot, subscribeToPriceTicks } from './market';
@@ -8,6 +9,8 @@ export const tradingStore = createTradingStore(
   HOLDINGS,
   (symbol) => getQuotesSnapshot()[symbol],
   SYMBOLS,
+  Date.now,
+  orderHistoryStore.record,
 );
 
 export function useHoldings() {
@@ -22,7 +25,7 @@ export function useHolding(symbol: string) {
 
 let requestCounter = 0;
 export function createTradeRequestId(): string {
-  return `local-${Date.now()}-${++requestCounter}`;
+  return `local-${tradingSessionId}-${++requestCounter}`;
 }
 
 // App owns this subscription, so pending orders match even off the detail screen.

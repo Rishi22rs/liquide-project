@@ -1,4 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import Svg, { Path, Circle } from 'react-native-svg';
+import { OrderHistoryScreen } from '../features/orders/OrderHistoryScreen';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PortfolioScreen } from '../features/portfolio/PortfolioScreen';
@@ -17,6 +19,25 @@ function TabIcon({ name, color }: { name: keyof MainTabParams; color: string }) 
           <View style={[iconStyles.briefcase, { borderColor: color }]} />
           <View style={[iconStyles.seam, { backgroundColor: color }]} />
         </>
+      ) : name === 'Orders' ? (
+        <Svg width={24} height={24} viewBox="0 0 24 24">
+          <Path
+            d="M13 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M7 7h6M7 11h4M7 15h2"
+            stroke={color}
+            strokeWidth={1.6}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <Circle cx={17} cy={17} r={5} stroke={color} strokeWidth={1.6} fill="none" />
+          <Path
+            d="M17 14v3l2 1"
+            stroke={color}
+            strokeWidth={1.6}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </Svg>
       ) : (
         <>
           <View style={[iconStyles.bookmark, { borderColor: color }]} />
@@ -52,6 +73,7 @@ export function MainTabs() {
     >
       <Tab.Screen name="Portfolio" component={PortfolioScreen} />
       <Tab.Screen name="Watchlist" component={WatchlistScreen} />
+      <Tab.Screen name="Orders" component={OrderHistoryScreen} />
     </Tab.Navigator>
   );
 }

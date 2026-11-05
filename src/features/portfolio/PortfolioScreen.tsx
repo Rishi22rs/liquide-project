@@ -2,6 +2,8 @@ import { useRef } from 'react';
 import { Animated, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import { HOLDINGS } from '../../data/holdings';
 import { GradientButton } from '../../components/GradientButton';
 import { loadMarket, useMarketStatus } from '../../state/market';
 import { useTheme } from '../../theme/theme';
@@ -27,35 +29,32 @@ export function PortfolioScreen() {
     extrapolate: 'clamp',
   });
 
-  const feedColor = status.paused || status.loading ? theme.accentText : theme.gain;
-  let feedLabel = 'Simulated live prices';
-  if (status.loading) feedLabel = 'Connecting to prices';
-  else if (status.paused) feedLabel = 'Prices paused';
-
   const expandedHeader = (
     <>
-      <View style={[styles.expandedHeader, { backgroundColor: theme.elevated }]}>
+      <LinearGradient
+        colors={[theme.headerStart, theme.headerEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.expandedHeader, { borderBottomColor: theme.line }]}
+      >
         <Animated.View style={{ opacity: expandedOpacity }}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>Your portfolio</Text>
             <Text style={[styles.subtitle, { color: theme.muted }]}>
               Every holding. One clear picture.
             </Text>
-          </View>
-          <View
-            style={[
-              styles.feed,
-              { borderColor: theme.line, backgroundColor: theme.card },
-            ]}
-          >
-            <View style={styles.feedLabel}>
-              <View style={[styles.statusDot, { backgroundColor: feedColor }]} />
-              <Text style={[styles.feedText, { color: feedColor }]}>{feedLabel}</Text>
+            <View style={styles.headerMetadata}>
+              <Text style={[styles.headerMetadataText, { color: theme.accentText }]}>
+                {HOLDINGS.length} holdings
+              </Text>
+              <View style={[styles.metadataDivider, { backgroundColor: theme.line }]} />
+              <Text style={[styles.headerMetadataText, { color: theme.muted }]}>
+                NSE · INR
+              </Text>
             </View>
-            <Text style={[styles.caption, { color: theme.muted }]}>NSE · INR</Text>
           </View>
         </Animated.View>
-      </View>
+      </LinearGradient>
       {status.error && (
         <View
           style={[

@@ -16,6 +16,8 @@ const light = {
   buttonText: '#121019',
   gradientStart: '#FFDF55',
   gradientEnd: '#F19A2A',
+  headerStart: '#F4F3F6',
+  headerEnd: '#FFFFFF',
   summaryStart: '#FFF8E7',
   summaryEnd: '#FFFFFF',
 };
@@ -36,6 +38,8 @@ const dark: Theme = {
   buttonText: '#121019',
   gradientStart: '#FFDF55',
   gradientEnd: '#F19A2A',
+  headerStart: '#1B1A22',
+  headerEnd: '#0C0C10',
   summaryStart: '#26221B',
   summaryEnd: '#141316',
 };

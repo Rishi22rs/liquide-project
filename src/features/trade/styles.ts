@@ -4,7 +4,6 @@ export const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000099' },
   keyboard: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    maxHeight: '94%',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderWidth: 1,
@@ -38,7 +37,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   body: { paddingHorizontal: 22, paddingBottom: 20, gap: 22 },
-  scroll: { flexGrow: 0, flexShrink: 1 },
+  scroll: { flexGrow: 0, flexShrink: 1, minHeight: 0 },
+  formScroll: { flexGrow: 1, flexShrink: 1, flexBasis: 0 },
   stock: {
     padding: 15,
     borderRadius: 18,

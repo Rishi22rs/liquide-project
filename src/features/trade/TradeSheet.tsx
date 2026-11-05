@@ -8,6 +8,7 @@ import {
   ScrollView,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -44,6 +45,18 @@ type Props = {
 
 export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  // Capture the open height once. Android's modal window shrinks for the
+  // keyboard, so recalculating from that smaller window would shrink it twice.
+  const openHeight = useRef(Math.max(1, windowHeight - insets.top - 12)).current;
+  const inputFocused = useRef(false);
+
+  function dismissBackdrop() {
+    // The first outside tap while editing closes only the keyboard. Keep the
+    // draft mounted instead of replaying the modal's slide animation.
+    if (inputFocused.current || Keyboard.isVisible()) Keyboard.dismiss();
+    else onClose();
+  }
   const quote = useQuote(symbol);
   const holding = useHolding(symbol);
   const availableShares = useAvailableShares(symbol);
@@ -145,18 +158,21 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
           accessible={false}
           aria-hidden
           importantForAccessibility="no-hide-descendants"
-          onPress={onClose}
+          onPress={dismissBackdrop}
           style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
         />
         <KeyboardAvoidingView
           pointerEvents="box-none"
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          enabled={Platform.OS === 'ios'}
           style={styles.keyboard}
         >
           <View
             accessibilityViewIsModal
             style={[
               styles.sheet,
+              { maxHeight: openHeight },
+              !fill && !placedOrder ? { height: openHeight } : undefined,
               { backgroundColor: theme.card, borderColor: theme.line },
             ]}
           >
@@ -201,7 +217,11 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
             </View>
             <ScrollView
               keyboardShouldPersistTaps="handled"
-              style={styles.scroll}
+              keyboardDismissMode="none"
+              style={[
+                styles.scroll,
+                !fill && !placedOrder ? styles.formScroll : undefined,
+              ]}
               contentContainerStyle={fill || placedOrder ? undefined : styles.body}
             >
               {fill ? (
@@ -309,6 +329,12 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                   </View>
                   <OrderTypeInput
                     type={orderType}
+                    onInputFocus={() => {
+                      inputFocused.current = true;
+                    }}
+                    onInputBlur={() => {
+                      inputFocused.current = false;
+                    }}
                     onTypeChange={(type) => {
                       setOrderType(type);
                       setSubmitError(undefined);
@@ -324,6 +350,12 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                   />
                   <QuantityInput
                     value={quantityText}
+                    onFocus={() => {
+                      inputFocused.current = true;
+                    }}
+                    onBlur={() => {
+                      inputFocused.current = false;
+                    }}
                     onChange={changeQuantity}
                     heldQuantity={availableShares}
                     side={side}

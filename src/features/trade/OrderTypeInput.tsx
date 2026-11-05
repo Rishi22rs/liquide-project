@@ -11,6 +11,8 @@ export function OrderTypeInput({
   error,
   side,
   theme,
+  onInputFocus,
+  onInputBlur,
 }: {
   type: 'market' | 'limit';
   onTypeChange: (type: 'market' | 'limit') => void;
@@ -19,6 +21,8 @@ export function OrderTypeInput({
   error?: string;
   side: TradeSide;
   theme: Theme;
+  onInputFocus?: () => void;
+  onInputBlur?: () => void;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -54,6 +58,8 @@ export function OrderTypeInput({
             accessibilityLabel="Limit price in rupees"
             value={value}
             onChangeText={onChange}
+            onFocus={onInputFocus}
+            onBlur={onInputBlur}
             keyboardType="decimal-pad"
             inputMode="decimal"
             maxLength={20}

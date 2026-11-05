@@ -11,6 +11,8 @@ type Props = {
   side: TradeSide;
   error?: string;
   theme: Theme;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export function QuantityInput({
@@ -20,6 +22,8 @@ export function QuantityInput({
   side,
   error,
   theme,
+  onFocus,
+  onBlur,
 }: Props) {
   const quantity = parseTradeQuantity(value);
   return (
@@ -81,6 +85,8 @@ export function QuantityInput({
           inputMode="numeric"
           value={value}
           onChangeText={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
           selectTextOnFocus
           selectionColor={theme.primary}
           style={[styles.input, { color: theme.text }]}

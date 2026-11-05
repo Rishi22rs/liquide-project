@@ -16,10 +16,17 @@ export const HoldingRow = memo(function HoldingRow({
 }) {
   const quote = useQuote(holding.symbol);
   const metrics = position(holding, quote);
+  const pnlColor =
+    metrics.pnl === undefined ? theme.muted : metrics.pnl >= 0 ? theme.gain : theme.loss;
   return (
     <View style={[styles.row, { borderColor: theme.line }]}>
-      <View style={[styles.monogram, { backgroundColor: theme.accent }]}>
-        <Text style={{ color: theme.gain, fontWeight: '700' }}>
+      <View
+        style={[
+          styles.monogram,
+          { backgroundColor: theme.elevated, borderColor: theme.line },
+        ]}
+      >
+        <Text style={{ color: theme.accentText, fontWeight: '800' }}>
           {holding.symbol.slice(0, 2)}
         </Text>
       </View>
@@ -34,21 +41,12 @@ export const HoldingRow = memo(function HoldingRow({
       </View>
       <View style={styles.right}>
         <Text style={[styles.symbol, { color: theme.text }]}>{money(metrics.value)}</Text>
-        <Text
-          style={[
-            styles.caption,
-            {
-              color:
-                metrics.pnl === undefined
-                  ? theme.muted
-                  : metrics.pnl >= 0
-                    ? theme.gain
-                    : theme.loss,
-            },
-          ]}
-        >
-          {money(metrics.pnl)} ({percent(metrics.pnlPercent)})
-        </Text>
+        <Text style={[styles.caption, { color: pnlColor }]}>{money(metrics.pnl)}</Text>
+        <View style={[styles.changeBadge, { backgroundColor: theme.elevated }]}>
+          <Text style={[styles.changeText, { color: pnlColor }]}>
+            {percent(metrics.pnlPercent)}
+          </Text>
+        </View>
       </View>
     </View>
   );

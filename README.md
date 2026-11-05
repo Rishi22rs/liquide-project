@@ -22,7 +22,7 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; system light/dark colors; Indian currency formatting.
 
-Still to implement: sorting, watchlist/persistence/swipe removal, stock navigation/detail/chart, buy/sell sheet and transaction calculations, responsive safe-area handling, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
+Still to implement: sorting, watchlist/persistence/swipe removal, stock navigation/detail/chart, buy/sell sheet and transaction calculations, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
 
 ## State and rendering
 
@@ -59,3 +59,10 @@ Time spent: not yet recorded; update with actual working time before submission.
 - `src/feed/`: replaceable feed contract and simulator implementation.
 
 Keep components focused on one responsibility. Give lifecycle/timing values explicit names. Comments explain business rules and non-obvious performance or lifecycle decisions. Keep calculations outside components so they can be tested without a device. Use `npm run format` to format code and `npm run format:check` to check it. Add future screens alongside portfolio under `src/features/`, sharing domain, state, and theme modules.
+
+
+## Visual reference
+
+The UI follows the user-provided Liquide screenshots: black backgrounds, charcoal surfaces, fine outlines, large rounded corners, bold headings, warm gold/orange actions, and green/red price changes. Shared colors live in `src/theme/theme.ts`; shared search and gradient button components live in `src/components/`. Light mode follows the same hierarchy on white/neutral surfaces. System safe areas are handled by `SafeAreaProvider` and `SafeAreaView`.
+
+The portfolio layout was visually inspected in a 390 × 844 web preview in dark mode. The API request failed in that browser preview, so error/retry and unavailable-price states were inspected; populated live-price layout and native performance still need device verification. Reference-only features (broker linking, advice, subscriptions, research scores) are outside this assignment's implementation.

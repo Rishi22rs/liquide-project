@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PortfolioScreen } from './src/features/portfolio/PortfolioScreen';
 import { loadMarket, stopMarket } from './src/state/market';
 
@@ -9,5 +10,9 @@ export default function App() {
     return stopMarket;
   }, []);
 
-  return <PortfolioScreen />;
+  return (
+    <SafeAreaProvider>
+      <PortfolioScreen />
+    </SafeAreaProvider>
+  );
 }

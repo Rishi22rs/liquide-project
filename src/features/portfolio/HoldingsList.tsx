@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { FlatList, RefreshControl, Text, View } from 'react-native';
+import { SearchField } from '../../components/SearchField';
 import { HOLDINGS } from '../../data/holdings';
 import { loadMarket, useMarketStatus } from '../../state/market';
 import type { Theme } from '../../theme/theme';
@@ -29,7 +30,8 @@ export function HoldingsList({ theme }: { theme: Theme }) {
           onRefresh={() => {
             void loadMarket();
           }}
-          tintColor={theme.gain}
+          tintColor={theme.gold}
+          colors={[theme.gold]}
         />
       }
       ListHeaderComponent={
@@ -37,20 +39,13 @@ export function HoldingsList({ theme }: { theme: Theme }) {
           <PortfolioSummary theme={theme} />
           <View style={styles.section}>
             <Text style={[styles.heading, { color: theme.text }]}>Your holdings</Text>
-            <Text style={{ color: theme.muted }}>{HOLDINGS.length} positions</Text>
+            <View style={[styles.countBadge, { backgroundColor: theme.elevated }]}>
+              <Text style={[styles.countText, { color: theme.text }]}>
+                {HOLDINGS.length}
+              </Text>
+            </View>
           </View>
-          <TextInput
-            accessibilityLabel="Filter holdings by symbol"
-            placeholder="Search a symbol"
-            placeholderTextColor={theme.muted}
-            value={query}
-            onChangeText={setQuery}
-            autoCapitalize="characters"
-            style={[
-              styles.search,
-              { backgroundColor: theme.card, color: theme.text, borderColor: theme.line },
-            ]}
-          />
+          <SearchField value={query} onChangeText={setQuery} theme={theme} />
           <View style={styles.section}>
             <Text style={[styles.caption, { color: theme.muted }]}>
               SYMBOL / POSITION

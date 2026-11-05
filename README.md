@@ -22,7 +22,7 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
-Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. The first two stretch goals, price-cell flash and reconnect/catch-up, are implemented; native verification is pending.
+Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. The first three stretch goals, price-cell flash, reconnect/catch-up, and limit orders, are implemented; native verification is pending.
 
 ## State and rendering
 
@@ -138,7 +138,7 @@ Portfolio last-price cells and Watchlist price cells flash a subtle green on an 
 
 On Android/iOS, `Animated.timing` uses the native driver so opacity frames run on the UI thread; detecting new prices and scheduling the animation still happens in JavaScript. `isInteraction: false` avoids holding the list's interaction queue open. Web uses the JS driver and does not demonstrate the UI-thread bonus. Reduce Motion disables flashes, including changes to the setting while the app is open. No new animation dependency was added. TypeScript, the 53 domain tests and iOS bundling are checked; native visual behavior, accessibility settings and performance still require device verification.
 
-Remaining optional bonuses: limit orders, persisted order history, and developer simulator controls.
+Remaining optional bonuses: persisted order history and developer simulator controls.
 
 ## Sticky holdings controls
 
@@ -154,3 +154,14 @@ The simulator reports its planned disconnect after a minute and refuses connecti
 Each stream gets a new sequence epoch: the snapshot starts at sequence zero, retired stream callbacks are detached and guarded by stream identity and request generation, and ordinary out-of-order ticks remain rejected within the new stream. Manual refresh cancels pending retries and aborts catch-up before starting its own generation. Unmount cancels timers, unsubscribes, disconnects and aborts requests. The silence watchdog can trigger the same single-flight recovery if a close event is missed. Transport readiness is synchronous for this simulator; a future real WebSocket adapter should expose readiness after its open event before the catch-up step.
 
 Eight additional tests bring the suite to 61. They cover capped backoff, single-flight recovery, no REST while offline, successful snapshot reseeding, old callbacks, failed catch-up, reset after success, stop/abort, refresh races, startup errors, and the actual simulator's five-second outage with a deterministic clock. TypeScript, formatting and bundle checks pass. Native airplane-mode, background/resume behavior and device profiling remain to be verified.
+
+
+## Bonus 3: simulated limit orders
+
+The trade sheet supports Market and Limit order types. A limit price is a positive rupee amount with at most two decimal places, parsed directly to integer paise. Buy limits match a received price at or below the limit; sell limits match at or above it. Matching fills the entire order at the actual received tick price, including price improvement when a tick gaps through the limit. An already eligible order still waits for the next accepted price tick. There is no invented crossing price or partial liquidity model. An estimate at the limit is labelled as such, not as a guaranteed execution value.
+
+Matching subscribes once in `App.tsx` and continues when the sheet or detail screen closes. Only accepted valid price events reach it; REST snapshots, volume-only updates, stale sequence ticks and zero/invalid prices do not fill orders. Paused orders wait until eligible live ticks resume, including after reconnect. Holdings, cost basis and order statuses are published together after FIFO matching. Each order fills once; repeated placement with the same ID is idempotent, and cancellation/fill states cannot be replayed as a new order. Invalid execution arithmetic produces a visible rejected order rather than repeatedly trying on every subsequent tick.
+
+Pending sell orders reserve their whole quantity. Both market sells and additional limit sells are limited to unreserved shares; cancellation, fill or rejection releases the reservation. The sheet displays held and available shares, and Max uses available quantity. Pending buy orders do not reserve cash because this simulation has no cash-account model. Limit orders can be reviewed/cancelled in Stock detail after closing the sheet. Every pending order remains visible; up to five completed limit statuses are shown for that symbol in the current session. This is not the separate persisted-history bonus: all orders, fills and holdings still reset on restart.
+
+Ten additional unit tests bring the suite to 71: exact price parsing, price conditions/equality, improved-price fills, idempotent placement, cancellation, reservations across market/limit sells, multiple FIFO sells with one publication, invalid ticks, unsafe-fill rejection and new positions. Mobile web checks use real OHLC-seeded simulated prices and cover invalid-price blocking, pending buy/cancel, a live buy fill at a better price, share reservations blocking another sale, cancellation releasing availability and live sell execution. TypeScript, formatting and web/iOS bundle checks pass. Native keyboard/gestures, accessibility review and device profiling remain pending.

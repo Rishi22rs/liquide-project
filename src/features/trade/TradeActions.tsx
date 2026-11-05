@@ -1,18 +1,18 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { GradientButton } from '../../components/GradientButton';
 import type { TradeSide } from '../../domain/trading';
-import { useHolding } from '../../state/holdings';
+import { useAvailableShares } from '../../state/holdings';
 import { useQuote } from '../../state/market';
 import type { Theme } from '../../theme/theme';
 
 type Props = { symbol: string; onOpen: (side: TradeSide) => void; theme: Theme };
 
 export function TradeActions({ symbol, onOpen, theme }: Props) {
-  const holding = useHolding(symbol);
+  const availableShares = useAvailableShares(symbol);
   const quote = useQuote(symbol);
   const priced =
     quote?.ltp !== undefined && Number.isSafeInteger(quote.ltp) && quote.ltp > 0;
-  const canSell = priced && (holding?.qty ?? 0) > 0;
+  const canSell = priced && availableShares > 0;
   return (
     <View
       style={[styles.container, { borderColor: theme.line, backgroundColor: theme.bg }]}

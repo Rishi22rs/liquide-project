@@ -15,13 +15,22 @@ import { GradientButton } from '../../components/GradientButton';
 import { money } from '../../domain/portfolio';
 import {
   parseTradeQuantity,
+  parseLimitPrice,
   validateTrade,
   type TradeFill,
   type TradeSide,
 } from '../../domain/trading';
-import { createTradeRequestId, tradingStore, useHolding } from '../../state/holdings';
+import {
+  createTradeRequestId,
+  tradingStore,
+  useHolding,
+  useAvailableShares,
+  useLimitOrders,
+} from '../../state/holdings';
 import { loadMarket, useMarketStatus, useQuote } from '../../state/market';
 import type { Theme } from '../../theme/theme';
+import { OrderTypeInput } from './OrderTypeInput';
+import { LimitOrderStatus } from './LimitOrders';
 import { QuantityInput } from './QuantityInput';
 import { TradeReceipt } from './TradeReceipt';
 import { styles } from './styles';
@@ -37,21 +46,40 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
   const insets = useSafeAreaInsets();
   const quote = useQuote(symbol);
   const holding = useHolding(symbol);
+  const availableShares = useAvailableShares(symbol);
+  const orders = useLimitOrders();
   const market = useMarketStatus();
   const [side, setSide] = useState(initialSide);
   const [quantityText, setQuantityText] = useState('1');
+  const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
+  const [limitText, setLimitText] = useState(() =>
+    quote?.ltp === undefined ? '' : (quote.ltp / 100).toFixed(2),
+  );
+  const [placedOrderId, setPlacedOrderId] = useState<string>();
+  const placedOrder = orders.find((order) => order.id === placedOrderId);
+  const limitPrice = parseLimitPrice(limitText);
+  const limitError =
+    orderType === 'limit' && limitPrice === undefined
+      ? 'Enter a positive price with at most two decimal places.'
+      : undefined;
   const [fill, setFill] = useState<TradeFill>();
   const [submitError, setSubmitError] = useState<string>();
   const [requestId] = useState(createTradeRequestId);
   const confirming = useRef(false);
   const quantity = parseTradeQuantity(quantityText);
-  const validationError = validateTrade(side, quantity, holding, quote?.ltp);
+  const validationHolding =
+    side === 'sell' && holding ? { ...holding, qty: availableShares } : holding;
+  const orderPrice = orderType === 'limit' ? limitPrice : quote?.ltp;
+  const validationError =
+    limitError ?? validateTrade(side, quantity, validationHolding, orderPrice);
   const currentPrice = quote?.ltp;
   const usablePrice =
     currentPrice !== undefined && Number.isSafeInteger(currentPrice) && currentPrice > 0;
   const estimate =
-    quantity !== undefined && usablePrice && Number.isSafeInteger(quantity * currentPrice)
-      ? quantity * currentPrice
+    quantity !== undefined &&
+    orderPrice !== undefined &&
+    Number.isSafeInteger(quantity * orderPrice)
+      ? quantity * orderPrice
       : undefined;
   const heldQuantity = holding?.qty ?? 0;
 
@@ -61,9 +89,35 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
   }
 
   function confirm() {
-    if (confirming.current || quantity === undefined || validationError || fill) return;
+    if (
+      confirming.current ||
+      quantity === undefined ||
+      validationError ||
+      fill ||
+      placedOrder
+    )
+      return;
     confirming.current = true;
     Keyboard.dismiss();
+    if (orderType === 'limit') {
+      if (limitPrice === undefined) {
+        confirming.current = false;
+        return;
+      }
+      const result = tradingStore.placeLimit({
+        id: requestId,
+        symbol,
+        side,
+        quantity,
+        limitPricePaise: limitPrice,
+      });
+      if (result.ok) setPlacedOrderId(result.order.id);
+      else {
+        setSubmitError(result.error);
+        confirming.current = false;
+      }
+      return;
+    }
     // The store revalidates the quantity and reads the latest price at this instant.
     const result = tradingStore.submit({
       id: requestId,
@@ -110,7 +164,17 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
             <View style={styles.heading}>
               <View>
                 <Text style={[styles.title, { color: theme.text }]}>
-                  {fill ? 'Order complete' : side === 'buy' ? 'Buy stock' : 'Sell stock'}
+                  {fill
+                    ? 'Order complete'
+                    : placedOrder
+                      ? placedOrder.status === 'pending'
+                        ? 'Limit order placed'
+                        : placedOrder.status === 'filled'
+                          ? 'Order complete'
+                          : 'Order updated'
+                      : side === 'buy'
+                        ? 'Buy stock'
+                        : 'Sell stock'}
                 </Text>
                 <Text style={[styles.caption, { color: theme.muted, marginTop: 5 }]}>
                   Local simulation
@@ -138,10 +202,14 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
             <ScrollView
               keyboardShouldPersistTaps="handled"
               style={styles.scroll}
-              contentContainerStyle={fill ? undefined : styles.body}
+              contentContainerStyle={fill || placedOrder ? undefined : styles.body}
             >
               {fill ? (
                 <TradeReceipt fill={fill} theme={theme} />
+              ) : placedOrder ? (
+                <View style={{ padding: 22 }}>
+                  <LimitOrderStatus order={placedOrder} theme={theme} />
+                </View>
               ) : (
                 <>
                   <View
@@ -160,7 +228,7 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                       <Text
                         style={[styles.caption, { color: theme.muted, marginTop: 4 }]}
                       >
-                        {heldQuantity} shares held
+                        {heldQuantity} shares held · {availableShares} available
                       </Text>
                     </View>
                     <View style={styles.right}>
@@ -201,9 +269,9 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                         }
                         accessibilityState={{
                           selected: side === option,
-                          disabled: option === 'sell' && heldQuantity === 0,
+                          disabled: option === 'sell' && availableShares === 0,
                         }}
-                        disabled={option === 'sell' && heldQuantity === 0}
+                        disabled={option === 'sell' && availableShares === 0}
                         onPress={() => {
                           setSide(option);
                           changeQuantity('1');
@@ -217,7 +285,7 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                                   ? theme.accent
                                   : theme.destructiveSurface
                                 : 'transparent',
-                            opacity: option === 'sell' && heldQuantity === 0 ? 0.3 : 1,
+                            opacity: option === 'sell' && availableShares === 0 ? 0.3 : 1,
                           },
                         ]}
                       >
@@ -239,14 +307,29 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                       </Pressable>
                     ))}
                   </View>
+                  <OrderTypeInput
+                    type={orderType}
+                    onTypeChange={(type) => {
+                      setOrderType(type);
+                      setSubmitError(undefined);
+                    }}
+                    value={limitText}
+                    onChange={(text) => {
+                      setLimitText(text);
+                      setSubmitError(undefined);
+                    }}
+                    error={limitError}
+                    side={side}
+                    theme={theme}
+                  />
                   <QuantityInput
                     value={quantityText}
                     onChange={changeQuantity}
-                    heldQuantity={heldQuantity}
+                    heldQuantity={availableShares}
                     side={side}
                     error={
                       quantity === undefined ||
-                      (side === 'sell' && (quantity ?? 0) > heldQuantity)
+                      (side === 'sell' && (quantity ?? 0) > availableShares)
                         ? validationError
                         : undefined
                     }
@@ -255,24 +338,32 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                   <View style={[styles.estimate, { borderColor: theme.line }]}>
                     <View style={styles.estimateRow}>
                       <Text style={[styles.fieldLabel, { color: theme.muted }]}>
-                        Estimated value
+                        {orderType === 'limit'
+                          ? 'Value at limit price'
+                          : 'Estimated value'}
                       </Text>
                       <Text style={[styles.estimateValue, { color: theme.text }]}>
                         {money(estimate)}
                       </Text>
                     </View>
                     <Text style={[styles.caption, { color: theme.muted }]}>
-                      The final fill uses the latest price when you confirm.
+                      {orderType === 'limit'
+                        ? 'Waits for the next eligible live tick. Fills at that tick’s price, which may be better than your limit.'
+                        : 'The final fill uses the latest price when you confirm.'}
                     </Text>
                     {market.paused && usablePrice && (
                       <Text style={[styles.caption, { color: theme.accentText }]}>
-                        Feed paused. The last received price will be used.
+                        {orderType === 'limit'
+                          ? 'Feed paused. This order will wait for live ticks to resume.'
+                          : 'Feed paused. The last received price will be used.'}
                       </Text>
                     )}
                     {!usablePrice && (
                       <>
                         <Text style={[styles.caption, { color: theme.loss }]}>
-                          Price unavailable. Trading is disabled.
+                          {orderType === 'limit'
+                            ? 'Live price unavailable. This limit order will wait for a valid live tick.'
+                            : 'Price unavailable. Trading is disabled.'}
                         </Text>
                         <Pressable
                           accessibilityRole="button"
@@ -296,8 +387,9 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
                       </Text>
                     )}
                     {validationError &&
+                      !limitError &&
                       quantity !== undefined &&
-                      !(side === 'sell' && quantity > heldQuantity) &&
+                      !(side === 'sell' && quantity > availableShares) &&
                       usablePrice && (
                         <Text style={[styles.error, { color: theme.loss }]}>
                           {validationError}
@@ -314,9 +406,17 @@ export function TradeSheet({ symbol, initialSide, onClose, theme }: Props) {
               ]}
             >
               <GradientButton
-                label={fill ? 'Done' : side === 'buy' ? 'Confirm buy' : 'Confirm sell'}
-                onPress={fill ? onClose : confirm}
-                disabled={!fill && Boolean(validationError)}
+                label={
+                  fill || placedOrder
+                    ? 'Done'
+                    : orderType === 'limit'
+                      ? 'Place limit order'
+                      : side === 'buy'
+                        ? 'Confirm buy'
+                        : 'Confirm sell'
+                }
+                onPress={fill || placedOrder ? onClose : confirm}
+                disabled={!fill && !placedOrder && Boolean(validationError)}
                 theme={theme}
               />
               <Text style={[styles.disclaimer, { color: theme.muted }]}>

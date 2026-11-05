@@ -1,9 +1,19 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Theme } from '../theme/theme';
 
-type Props = { value: string; onChangeText: (value: string) => void; theme: Theme };
+type Props = {
+  value: string;
+  onChangeText: (value: string) => void;
+  theme: Theme;
+  accessibilityLabel?: string;
+};
 
-export function SearchField({ value, onChangeText, theme }: Props) {
+export function SearchField({
+  value,
+  onChangeText,
+  theme,
+  accessibilityLabel = 'Filter holdings by symbol',
+}: Props) {
   return (
     <View style={[styles.container, { borderColor: theme.inputBorder }]}>
       {/* Draw the search icon with native views to avoid platform-specific glyphs. */}
@@ -12,7 +22,7 @@ export function SearchField({ value, onChangeText, theme }: Props) {
         <View style={[styles.handle, { backgroundColor: theme.muted }]} />
       </View>
       <TextInput
-        accessibilityLabel="Filter holdings by symbol"
+        accessibilityLabel={accessibilityLabel}
         placeholder="Search for stocks"
         placeholderTextColor={theme.muted}
         value={value}

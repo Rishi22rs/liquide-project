@@ -141,3 +141,15 @@ export function sortHoldings(
     return (leftAmount - rightAmount) * multiplier || bySymbol;
   });
 }
+
+/** Day change is unavailable unless both prices exist; zero close has no percentage. */
+export function dayChange(quote?: Quote) {
+  if (quote?.ltp === undefined || quote.prevClose === undefined) {
+    return { amount: undefined, percentage: undefined };
+  }
+  const amount = quote.ltp - quote.prevClose;
+  return {
+    amount,
+    percentage: quote.prevClose === 0 ? undefined : (amount / quote.prevClose) * 100,
+  };
+}

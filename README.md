@@ -22,7 +22,7 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
-Still to implement: watchlist/persistence/swipe removal, stock navigation/detail/chart, buy/sell sheet and transaction calculations, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
+Still to implement: stock navigation/detail/chart, buy/sell sheet and transaction calculations, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
 
 ## State and rendering
 
@@ -40,7 +40,7 @@ Missing fields stay undefined and render as `--`. OLDCO is deliberately never se
 
 Unit tests cover price conversion, stale/duplicate sequences, partial updates, unavailable prices, summary reconciliation, percentage denominators, and zero-denominator handling. Native device behavior and performance have **not** been verified yet. The current environment lacks configured iOS simulator tools; Android ADB startup is restricted in the sandbox.
 
-Next: verify the portfolio on your target device, measure rendering, then implement the watchlist before stock detail/orders. With another day after the core, prioritize device profiling, lifecycle handling, accessibility, and more feed/transaction tests before optional features.
+Next: verify the portfolio on your target device, measure rendering, then implement stock detail/orders. With another day after the core, prioritize device profiling, lifecycle handling, accessibility, and more feed/transaction tests before optional features.
 
 Time spent: not yet recorded; update with actual working time before submission.
 
@@ -82,3 +82,16 @@ Holdings can be sorted by symbol name, current value, or absolute P&L in rupees.
 `sortHoldings` is a pure function in `src/domain/portfolio.ts`. `useSortedHoldings.ts` subscribes to derived order rather than every quote object: it returns the previous array if the holding identities remain in the same order. On a price crossover the list order updates; memoized rows still receive the same holding objects. This deliberately permits live row movement in value/P&L modes. Native profiling is still pending.
 
 Five additional tests cover direction changes, quantities, zero versus missing prices, positive/negative P&L, stable ties, non-mutation and reordering after a price update. UI checks in the web preview covered all three controls, direction reversal, and searching/clearing while sorting. The browser API request failed, so populated numeric ordering was verified in domain tests rather than against live browser prices.
+
+
+## Step 3: persistent watchlist
+
+React Navigation provides two bottom tabs, retaining portfolio search/sort state when switching screens. The feed is owned by `App.tsx` and is not reconnected when navigating. Watchlist rows reuse per-symbol quote subscriptions and show last price plus day change in rupees/percent, with `--` for unavailable values. The full-screen picker searches the 25 allowed symbols and prevents duplicate additions.
+
+`src/domain/watchlist.ts` contains an injected-storage store. `src/state/watchlist.ts` connects it to AsyncStorage and React. Startup hydrates selections before edits are allowed. Writes are serialized so fast edits cannot save an older list after a newer one. A failed read blocks edits and offers retry; a failed write retains the local selection and offers retry. Malformed saved data is reported rather than silently overwritten. Unknown symbols and duplicates are discarded during validation. Watchlist selections are local to this installation; this is not account sync.
+
+Swipe left to reveal Remove, then tap it. `SwipeToRemove.tsx` uses PanResponder with a horizontal threshold so vertical scrolling remains with the list. Settling springs use the native driver on Android/iOS; gesture movement is JS-driven and requires native performance verification. Each row also has an accessible Remove button. This approach avoids additional gesture/animation dependencies for a 25-symbol list.
+
+Seven new tests cover saved-data validation, hydration protection, unique allowed-symbol additions, removal and restart persistence, serialized rapid edits, storage read/write recovery and day-change calculations. The full suite now has 18 tests. Mobile web checks covered tab navigation, picker filtering, additions, duplicate prevention, swipe reveal/removal, accessible removal, empty state, and persistence after reload. The shared API request fails in this browser preview, so populated live-price behavior and native gesture performance remain unverified. The iOS JavaScript bundle builds; that is not a native device test.
+
+Next: stock detail navigation, live OHLC statistics and a chart of ticks since opening, followed by local buy/sell transactions.

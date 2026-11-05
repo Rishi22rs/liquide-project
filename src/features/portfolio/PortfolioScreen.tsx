@@ -79,7 +79,10 @@ export function PortfolioScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]}>
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[styles.screen, { backgroundColor: theme.bg }]}
+    >
       <StatusBar style="light" />
       {/* This relative container anchors the overlay below the safe-area inset. */}
       <View style={styles.screen}>

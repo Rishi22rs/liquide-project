@@ -3,7 +3,12 @@ import type { PriceTick } from '../domain/tickHistory';
 import { fetchQuotes } from '../data/api';
 import { mergeTick, type Quote, type Tick } from '../domain/portfolio';
 import { createReconnectingFeed } from '../feed/reconnectingFeed';
-import { createSimulator } from '../feed/simulator';
+import {
+  createSimulator,
+  DEFAULT_TICK_RATE,
+  SIMULATOR_TICK_RATES,
+  type SimulatorFeed,
+} from '../feed/simulator';
 
 type MarketStatus = Readonly<{
   loading: boolean;
@@ -23,9 +28,20 @@ let quotes: Readonly<Record<string, Quote>> = {};
 let status: MarketStatus = { loading: true, paused: false };
 let healthCheckTimer: ReturnType<typeof setInterval> | undefined;
 let lastAcceptedTickAt = 0;
+let activeSimulator: SimulatorFeed | undefined;
+let simulatorSettings = { tickRate: DEFAULT_TICK_RATE };
+const settingsListeners = new Set<() => void>();
 const connection = createReconnectingFeed({
   fetchSnapshot: fetchQuotes,
-  createFeed: createSimulator,
+  createFeed: (snapshot) => {
+    // Retain the selected rate through catch-up and manual refresh, without
+    // exposing simulator-specific controls through the socket contract.
+    activeSimulator = createSimulator(
+      snapshot,
+      __DEV__ ? simulatorSettings.tickRate : DEFAULT_TICK_RATE,
+    );
+    return activeSimulator;
+  },
   onSnapshot: (snapshot) => {
     quotes = snapshot;
     lastAcceptedTickAt = Date.now();
@@ -115,6 +131,39 @@ export async function loadMarket(): Promise<void> {
 
 export function stopMarket(): void {
   connection.stop();
+  activeSimulator = undefined;
   if (healthCheckTimer) clearInterval(healthCheckTimer);
   healthCheckTimer = undefined;
+}
+
+// These entry points are guarded too: hiding the panel alone is not enough to
+// ensure developer actions cannot alter a release build's feed.
+export function setSimulatorTickRate(rate: number): boolean {
+  if (!__DEV__ || !SIMULATOR_TICK_RATES.some((option) => option === rate)) return false;
+  if (rate === simulatorSettings.tickRate) return true;
+  activeSimulator?.setTickRate(rate);
+  simulatorSettings = { tickRate: rate };
+  settingsListeners.forEach((listener) => listener());
+  return true;
+}
+export function canForceSimulatorDisconnect(): boolean {
+  return (
+    __DEV__ &&
+    !status.loading &&
+    !status.paused &&
+    (activeSimulator?.isConnected() ?? false)
+  );
+}
+export function forceSimulatorDisconnect(): boolean {
+  if (!canForceSimulatorDisconnect()) return false;
+  return activeSimulator?.forceDisconnect() ?? false;
+}
+function subscribeSimulatorSettings(listener: () => void): () => void {
+  settingsListeners.add(listener);
+  return () => {
+    settingsListeners.delete(listener);
+  };
+}
+export function useSimulatorSettings() {
+  return useSyncExternalStore(subscribeSimulatorSettings, () => simulatorSettings);
 }

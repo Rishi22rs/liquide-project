@@ -1,12 +1,25 @@
 import type { Quote, Tick } from '../domain/portfolio';
 import type { PriceFeed } from './types';
-const TICK_INTERVAL_MS = 50;
+export const SIMULATOR_TICK_RATES = [5, 20, 50, 100] as const;
+export const DEFAULT_TICK_RATE = 20;
+export interface SimulatorFeed extends PriceFeed {
+  setTickRate(rate: number): boolean;
+  forceDisconnect(): boolean;
+  isConnected(): boolean;
+}
+function validRate(rate: number): boolean {
+  return Number.isInteger(rate) && rate >= 1 && rate <= 100;
+}
 const ACTIVE_DURATION_MS = 60_000;
 const SILENT_DURATION_MS = 5_000;
 const MAX_PRICE_CHANGE = 0.002;
 const LATE_TICK_PROBABILITY = 0.02;
 
-export function createSimulator(initial: Readonly<Record<string, Quote>>): PriceFeed {
+export function createSimulator(
+  initial: Readonly<Record<string, Quote>>,
+  initialTickRate = DEFAULT_TICK_RATE,
+): SimulatorFeed {
+  let tickRate = validRate(initialTickRate) ? initialTickRate : DEFAULT_TICK_RATE;
   const quotes = { ...initial };
   const symbols = Object.keys(quotes).filter(
     (symbol) => quotes[symbol]?.ltp !== undefined,
@@ -17,35 +30,28 @@ export function createSimulator(initial: Readonly<Record<string, Quote>>): Price
   let connectionGeneration = 0;
   let unavailableUntil = 0;
   const disconnectListeners = new Set<() => void>();
-  return {
-    onDisconnect(handler) {
-      disconnectListeners.add(handler);
-      return () => {
-        disconnectListeners.delete(handler);
-      };
-    },
-    onTick(handler) {
-      listeners.add(handler);
-      return () => {
-        listeners.delete(handler);
-      };
-    },
-    connect() {
-      if (Date.now() < unavailableUntil)
-        throw new Error('Price feed is temporarily unavailable.');
-      if (timer !== undefined || !symbols.length) return;
-      const epoch = ++connectionGeneration;
-      started = Date.now();
-      timer = setInterval(() => {
+  function stopTimer() {
+    connectionGeneration++;
+    if (timer !== undefined) clearInterval(timer);
+    timer = undefined;
+  }
+  function dropConnection(): boolean {
+    if (timer === undefined) return false;
+    unavailableUntil = Date.now() + SILENT_DURATION_MS;
+    stopTimer();
+    for (const listener of disconnectListeners) listener();
+    return true;
+  }
+  function armTimer() {
+    stopTimer();
+    const epoch = connectionGeneration;
+    timer = setInterval(
+      () => {
         if (epoch !== connectionGeneration || timer === undefined) return;
         if (Date.now() - started >= ACTIVE_DURATION_MS) {
           // Preserve this outage across connect attempts; reconnect must not skip
           // the five-second pause by resetting the simulator's clock.
-          unavailableUntil = Date.now() + SILENT_DURATION_MS;
-          clearInterval(timer);
-          timer = undefined;
-          connectionGeneration++;
-          for (const listener of disconnectListeners) listener();
+          dropConnection();
           return;
         }
         const symbol = symbols[Math.floor(Math.random() * symbols.length)];
@@ -68,12 +74,41 @@ export function createSimulator(initial: Readonly<Record<string, Quote>>): Price
             ? { ...tick, seq: Math.max(0, previous.seq - 1) }
             : tick;
         for (const listener of listeners) listener(delivered);
-      }, TICK_INTERVAL_MS);
+      },
+      Math.round(1000 / tickRate),
+    );
+  }
+  return {
+    onDisconnect(handler) {
+      disconnectListeners.add(handler);
+      return () => {
+        disconnectListeners.delete(handler);
+      };
     },
-    disconnect() {
-      connectionGeneration++;
-      if (timer !== undefined) clearInterval(timer);
-      timer = undefined;
+    onTick(handler) {
+      listeners.add(handler);
+      return () => {
+        listeners.delete(handler);
+      };
+    },
+    connect() {
+      if (Date.now() < unavailableUntil)
+        throw new Error('Price feed is temporarily unavailable.');
+      if (timer !== undefined || !symbols.length) return;
+      started = Date.now();
+      armTimer();
+    },
+    disconnect: stopTimer,
+    isConnected: () => timer !== undefined,
+    forceDisconnect: dropConnection,
+    setTickRate(rate) {
+      if (!validRate(rate)) return false;
+      if (rate === tickRate) return true;
+      tickRate = rate;
+      // Change only the timer cadence: retain quotes, sequence numbers and the
+      // minute's original start time, and never reconnect a paused feed here.
+      if (timer !== undefined) armTimer();
+      return true;
     },
   };
 }

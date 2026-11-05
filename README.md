@@ -22,7 +22,7 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
-Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. The first four stretch goals, price-cell flash, reconnect/catch-up, limit orders, and persisted order history, are implemented; native verification is pending.
+Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. All five stretch goals are implemented: price-cell flash, reconnect/catch-up, limit orders, persisted order history and simulator developer controls. Native verification is pending.
 
 ## State and rendering
 
@@ -138,7 +138,7 @@ Portfolio last-price cells and Watchlist price cells flash a subtle green on an 
 
 On Android/iOS, `Animated.timing` uses the native driver so opacity frames run on the UI thread; detecting new prices and scheduling the animation still happens in JavaScript. `isInteraction: false` avoids holding the list's interaction queue open. Web uses the JS driver and does not demonstrate the UI-thread bonus. Reduce Motion disables flashes, including changes to the setting while the app is open. No new animation dependency was added. TypeScript, the 53 domain tests and iOS bundling are checked; native visual behavior, accessibility settings and performance still require device verification.
 
-Remaining optional bonus: developer simulator controls.
+All five optional bonuses are implemented. Native verification, profiling and submission preparation remain.
 
 ## Sticky holdings controls
 
@@ -180,3 +180,14 @@ Eleven new tests bring the suite to 82: restart persistence, captured fill value
 ## Trade-sheet keyboard layout
 
 The editable sheet captures its open height once and lets only its scrollable form shrink as keyboard space is removed. Android's native Modal already uses adjust-resize, so a second KeyboardAvoidingView height adjustment is disabled there; iOS retains padding-based keyboard avoidance. The body uses explicit flex growth and a zero minimum height rather than a percentage-sized, content-driven sheet. Both inputs track focus without changing React state. Backdrop taps while editing dismiss the keyboard before dismissing the sheet; the Close button still closes directly. Mobile web checks covered first limit-price focus, retained draft text, and a reduced-height viewport with the footer visible. Real native keyboard animation still requires device verification.
+
+
+## Bonus 5: simulator developer controls
+
+In development, tap DEV in the Portfolio toolbar or select Simulator controls from React Native's native developer menu. Both open the same global panel, so its status remains visible across recovery. Choose an aggregate rate of 5, 20, 50 or 100 ticks per second; 20 is the default. Rate changes replace only the active timer, preserving price/volume state, per-symbol sequences and the original scheduled-pause boundary. They do not fetch REST, clear chart history or reconnect a paused stream. The preference survives manual refresh and reconnect within the current launch, then resets to 20 on app restart.
+
+Force disconnect creates a five-second transport outage and emits the same disconnect event as the scheduled pause. Existing backoff and catch-up own recovery; the developer panel does not fake status or call a separate refresh path. The action is disabled while connecting/paused and when no priced stream exists. Repeated calls cannot prolong an existing outage. A successful probe normally occurs seven seconds after disconnection (1+2+4), plus REST response time.
+
+The panel, toolbar button and native menu registration are guarded by `__DEV__`. The action entry points in `state/market.ts` also reject release-build calls, and production always seeds streams at 20 ticks/s. The generic PriceFeed contract remains simulator-independent; only SimulatorFeed exposes cadence/disconnect controls. Native menu handler replacement avoids stale callbacks across unmount/Fast Refresh. No additional package is needed.
+
+Six additional tests bring the suite to 88: exact default/changed cadence, invalid rates, timer cleanup and sequence retention, forced-outage duration, preserving the minute boundary, intentional disconnect/unsubscription, and recovery integration with retained rate/no REST while offline. Development web checks covered opening the panel, rate selection, immediate paused/reconnect UI and automatic recovery. Production web checks verify the DEV entry is absent. TypeScript, formatting and web/iOS bundles pass; native developer-menu registration, device tick scheduling and profiling remain unverified. High rates are stress-test targets, not a claim of measured native throughput.

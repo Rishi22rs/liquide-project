@@ -1,5 +1,6 @@
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { openSimulatorControls } from '../../state/developerMenu';
 import { useMarketStatus } from '../../state/market';
 import type { Theme } from '../../theme/theme';
 import { styles } from './styles';
@@ -39,6 +40,22 @@ export function PortfolioHeader({ scrollY, theme }: Props) {
           <Text style={[styles.brandLetter, { color: theme.accentText }]}>L</Text>
         </View>
         <Text style={[styles.brandName, { color: theme.text }]}>liquide</Text>
+        {__DEV__ && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open simulator controls"
+            onPress={openSimulatorControls}
+            hitSlop={6}
+            style={[
+              headerStyles.devButton,
+              { borderColor: theme.line, backgroundColor: theme.accent },
+            ]}
+          >
+            <Text style={[headerStyles.statusText, { color: theme.accentText }]}>
+              DEV
+            </Text>
+          </Pressable>
+        )}
         <View
           style={[
             headerStyles.statusPill,
@@ -80,6 +97,13 @@ const headerStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
+  },
+  devButton: {
+    minHeight: 32,
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
   },
   statusPill: {
     flexDirection: 'row',

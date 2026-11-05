@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SimulatorDevMenu } from './src/features/developer/SimulatorDevMenu';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { orderHistoryStore } from './src/state/orderHistory';
 import { startLimitOrderMatching } from './src/state/holdings';
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppNavigator />
+      {__DEV__ && <SimulatorDevMenu />}
     </SafeAreaProvider>
   );
 }

@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Local release signing and installable build artifacts
+.credentials/
+builds/

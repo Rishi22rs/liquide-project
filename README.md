@@ -22,13 +22,13 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
-Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. The first stretch goal, price-cell flash, is implemented; native verification is pending.
+Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. The first two stretch goals, price-cell flash and reconnect/catch-up, are implemented; native verification is pending.
 
 ## State and rendering
 
 `src/state/market.ts` is a small external store using React's `useSyncExternalStore`. Quote objects are indexed by symbol. An accepted tick replaces only that symbol's object; unchanged quote objects keep their identity. Every row reads its own quote snapshot; the summary reads the whole quote map. The list does not subscribe to raw quote snapshots. Name sorting needs no feed subscription; value/P&L sorting subscribes to the derived holding order and preserves the array identity while that order is unchanged. Notifications still reach all subscriptions, but React sees unchanged snapshots for other rows and skips their rendering. This is an intentional small implementation for 25 symbols, to be measured in the React DevTools Profiler.
 
-`src/feed/simulator.ts` exposes `connect`, `disconnect`, and `onTick`. It emits at 50ms intervals across available symbols, uses increasing per-symbol sequences, occasionally delivers an old sequence, and pauses for five seconds after each minute of activity. The store detects silence after two seconds. Prices are simulated on top of REST data; there is no API polling. A refresh stops the old feed and starts a new quote/sequence generation. Failed refreshes retain old quote data and expose a paused/error state.
+`src/feed/simulator.ts` exposes `connect`, `disconnect`, and `onTick`. It emits at 50ms intervals across available symbols, uses increasing per-symbol sequences, occasionally delivers an old sequence, and pauses for five seconds after each minute of activity. Disconnect events immediately start recovery; a two-second silence watchdog catches missing close events. Prices are simulated on top of REST data. REST is requested at startup, manual refresh, and connection recovery, with no continuous polling. A refresh stops the old feed and starts a new quote/sequence generation. Failed refreshes retain old quote data and expose a paused/error state.
 
 ## Money and missing data
 
@@ -138,8 +138,19 @@ Portfolio last-price cells and Watchlist price cells flash a subtle green on an 
 
 On Android/iOS, `Animated.timing` uses the native driver so opacity frames run on the UI thread; detecting new prices and scheduling the animation still happens in JavaScript. `isInteraction: false` avoids holding the list's interaction queue open. Web uses the JS driver and does not demonstrate the UI-thread bonus. Reduce Motion disables flashes, including changes to the setting while the app is open. No new animation dependency was added. TypeScript, the 53 domain tests and iOS bundling are checked; native visual behavior, accessibility settings and performance still require device verification.
 
-Remaining optional bonuses: reconnect/backoff with catch-up fetch, limit orders, persisted order history, and developer simulator controls.
+Remaining optional bonuses: limit orders, persisted order history, and developer simulator controls.
 
 ## Sticky holdings controls
 
 Search, sort options, direction and column headings form one sticky FlatList item. The expanded header and Summary scroll away; the controls pin directly below the reserved toolbar and return to their normal position when scrolling back to the top. The same input stays mounted while sticking, preserving focus and query. Empty searches use the list footer because the controls remain a real list item. Focusing search scrolls to the measured header boundary, and short results retain enough content height to keep that boundary reachable. No per-scroll React state or duplicate overlay input is used. Mobile web checks covered scrolling through different rows with controls pinned, empty results, filtering/clearing, sorting and returning to the top. Native sticky/keyboard behavior remains to be verified.
+
+
+## Bonus 2: reconnect with backoff and catch-up
+
+`src/feed/types.ts` defines the transport contract, including disconnect notifications. `src/feed/reconnectingFeed.ts` owns a single connection, retry timer and abortable snapshot request. Automatic recovery uses 1, 2, 4, 8, 16, then at most 30 seconds between attempts. Backoff resets only after both catch-up and stream replacement succeed. Existing quotes stay visible with Prices paused and an explanation of the recovery attempt; Portfolio offers Retry now. There is no continuous REST polling. Startup REST failures require explicit retry instead of starting a background request loop. A response with no usable prices also waits for explicit refresh rather than repeatedly reconnecting an empty feed.
+
+The simulator reports its planned disconnect after a minute and refuses connection attempts for the next five seconds. Failed transport probes do not fetch REST. Once the probe succeeds, the old stream is stopped, one catch-up request is made, and a fresh stream is seeded from that snapshot. Backoff means a five-second outage normally recovers at the seven-second probe (1+2+4), plus request time. Snapshot prices may differ from the last simulated price; that is deliberate resynchronization with REST, not fabricated continuity. Historical chart points remain, but the REST snapshot itself is not inserted as a tick. Old quote snapshots remain visible if catch-up fails; REST failures retry with the same bounded backoff.
+
+Each stream gets a new sequence epoch: the snapshot starts at sequence zero, retired stream callbacks are detached and guarded by stream identity and request generation, and ordinary out-of-order ticks remain rejected within the new stream. Manual refresh cancels pending retries and aborts catch-up before starting its own generation. Unmount cancels timers, unsubscribes, disconnects and aborts requests. The silence watchdog can trigger the same single-flight recovery if a close event is missed. Transport readiness is synchronous for this simulator; a future real WebSocket adapter should expose readiness after its open event before the catch-up step.
+
+Eight additional tests bring the suite to 61. They cover capped backoff, single-flight recovery, no REST while offline, successful snapshot reseeding, old callbacks, failed catch-up, reset after success, stop/abort, refresh races, startup errors, and the actual simulator's five-second outage with a deterministic clock. TypeScript, formatting and bundle checks pass. Native airplane-mode, background/resume behavior and device profiling remain to be verified.

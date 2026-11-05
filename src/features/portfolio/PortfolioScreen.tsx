@@ -64,11 +64,11 @@ export function PortfolioScreen() {
           ]}
         >
           <Text style={[styles.metric, { color: theme.text }]}>
-            Couldn't refresh prices
+            {status.reconnecting ? 'Reconnecting to prices' : "Couldn't refresh prices"}
           </Text>
           <Text style={[styles.note, { color: theme.muted }]}>{status.error}</Text>
           <GradientButton
-            label="Try again"
+            label={status.reconnecting ? 'Retry now' : 'Try again'}
             onPress={() => {
               void loadMarket();
             }}

@@ -40,8 +40,11 @@ export function parseQuotes(payload: unknown): Record<string, Quote> {
   }
   return quotes;
 }
-export async function fetchQuotes(): Promise<Record<string, Quote>> {
+export async function fetchQuotes(signal?: AbortSignal): Promise<Record<string, Quote>> {
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch('https://api.v2.liquide.life/api/markets/ohlc', {
@@ -57,5 +60,6 @@ export async function fetchQuotes(): Promise<Record<string, Quote>> {
   } finally {
     // Clear the timeout after both successful and failed requests.
     clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
   }
 }

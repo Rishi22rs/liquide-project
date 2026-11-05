@@ -2,11 +2,13 @@ import { useSyncExternalStore } from 'react';
 import type { PriceTick } from '../domain/tickHistory';
 import { fetchQuotes } from '../data/api';
 import { mergeTick, type Quote, type Tick } from '../domain/portfolio';
-import { createSimulator, type PriceFeed } from '../feed/simulator';
+import { createReconnectingFeed } from '../feed/reconnectingFeed';
+import { createSimulator } from '../feed/simulator';
 
 type MarketStatus = Readonly<{
   loading: boolean;
   error?: string;
+  reconnecting?: boolean;
   paused: boolean;
 }>;
 
@@ -19,11 +21,22 @@ const priceTickListeners = new Set<(tick: PriceTick) => void>();
 // render components that only care about connection/loading status.
 let quotes: Readonly<Record<string, Quote>> = {};
 let status: MarketStatus = { loading: true, paused: false };
-let feed: PriceFeed | undefined;
-let unsubscribeFromFeed: (() => void) | undefined;
 let healthCheckTimer: ReturnType<typeof setInterval> | undefined;
 let lastAcceptedTickAt = 0;
-let requestGeneration = 0;
+const connection = createReconnectingFeed({
+  fetchSnapshot: fetchQuotes,
+  createFeed: createSimulator,
+  onSnapshot: (snapshot) => {
+    quotes = snapshot;
+    lastAcceptedTickAt = Date.now();
+    notifySubscribers();
+  },
+  onTick: handleTick,
+  onState: (next) => {
+    status = next;
+    notifySubscribers();
+  },
+});
 
 function notifySubscribers(): void {
   for (const listener of listeners) {
@@ -65,15 +78,6 @@ export function useMarketStatus(): MarketStatus {
   return useSyncExternalStore(subscribeToMarket, () => status);
 }
 
-function stopFeed(): void {
-  feed?.disconnect();
-  unsubscribeFromFeed?.();
-  if (healthCheckTimer) clearInterval(healthCheckTimer);
-  feed = undefined;
-  unsubscribeFromFeed = undefined;
-  healthCheckTimer = undefined;
-}
-
 function handleTick(tick: Tick): void {
   const previousQuote = quotes[tick.symbol];
   const updatedQuote = mergeTick(previousQuote, tick);
@@ -92,54 +96,25 @@ function handleTick(tick: Tick): void {
     };
     for (const listener of priceTickListeners) listener(priceTick);
   }
-  if (status.paused) status = { ...status, paused: false };
   notifySubscribers();
 }
 
 function checkFeedHealth(): void {
-  const paused = Date.now() - lastAcceptedTickAt > PAUSED_AFTER_MS;
-  if (paused === status.paused) return;
-
-  status = { ...status, paused };
-  notifySubscribers();
+  if (status.loading || status.paused) return;
+  // A valid REST response may omit every requested price. There is no stream to
+  // recover in that case; leave -- visible and wait for explicit refresh.
+  if (!Object.values(quotes).some((quote) => quote.ltp !== undefined)) return;
+  if (Date.now() - lastAcceptedTickAt > PAUSED_AFTER_MS) connection.recover();
 }
 
 export async function loadMarket(): Promise<void> {
-  // A newer refresh or unmount invalidates older requests, even if they finish later.
-  const currentRequest = ++requestGeneration;
-  stopFeed();
-  status = { loading: true, paused: false };
-  notifySubscribers();
-
-  try {
-    const receivedQuotes = await fetchQuotes();
-    if (currentRequest !== requestGeneration) return;
-
-    quotes = receivedQuotes;
-    status = { loading: false, paused: false };
-    lastAcceptedTickAt = Date.now();
-
-    // This is the only place that chooses the feed implementation. Screens use
-    // quotes, not the simulator, so a real socket can replace it here later.
-    feed = createSimulator(receivedQuotes);
-    unsubscribeFromFeed = feed.onTick(handleTick);
-    feed.connect();
-    healthCheckTimer = setInterval(checkFeedHealth, HEALTH_CHECK_INTERVAL_MS);
-    notifySubscribers();
-  } catch (error: unknown) {
-    if (currentRequest !== requestGeneration) return;
-
-    // Preserve previously fetched quotes on a refresh error; label them paused.
-    status = {
-      loading: false,
-      paused: true,
-      error: error instanceof Error ? error.message : 'Could not load prices.',
-    };
-    notifySubscribers();
-  }
+  if (healthCheckTimer) clearInterval(healthCheckTimer);
+  healthCheckTimer = setInterval(checkFeedHealth, HEALTH_CHECK_INTERVAL_MS);
+  await connection.start();
 }
 
 export function stopMarket(): void {
-  requestGeneration++;
-  stopFeed();
+  connection.stop();
+  if (healthCheckTimer) clearInterval(healthCheckTimer);
+  healthCheckTimer = undefined;
 }

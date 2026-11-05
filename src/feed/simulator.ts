@@ -1,10 +1,5 @@
 import type { Quote, Tick } from '../domain/portfolio';
-// Screens and state rely on this contract, not on how ticks are produced.
-export interface PriceFeed {
-  connect(): void;
-  disconnect(): void;
-  onTick(handler: (tick: Tick) => void): () => void;
-}
+import type { PriceFeed } from './types';
 const TICK_INTERVAL_MS = 50;
 const ACTIVE_DURATION_MS = 60_000;
 const SILENT_DURATION_MS = 5_000;
@@ -19,7 +14,16 @@ export function createSimulator(initial: Readonly<Record<string, Quote>>): Price
   const listeners = new Set<(tick: Tick) => void>();
   let timer: ReturnType<typeof setInterval> | undefined;
   let started = 0;
+  let connectionGeneration = 0;
+  let unavailableUntil = 0;
+  const disconnectListeners = new Set<() => void>();
   return {
+    onDisconnect(handler) {
+      disconnectListeners.add(handler);
+      return () => {
+        disconnectListeners.delete(handler);
+      };
+    },
     onTick(handler) {
       listeners.add(handler);
       return () => {
@@ -27,14 +31,23 @@ export function createSimulator(initial: Readonly<Record<string, Quote>>): Price
       };
     },
     connect() {
-      if (timer || !symbols.length) return;
+      if (Date.now() < unavailableUntil)
+        throw new Error('Price feed is temporarily unavailable.');
+      if (timer !== undefined || !symbols.length) return;
+      const epoch = ++connectionGeneration;
       started = Date.now();
       timer = setInterval(() => {
-        if (
-          (Date.now() - started) % (ACTIVE_DURATION_MS + SILENT_DURATION_MS) >=
-          ACTIVE_DURATION_MS
-        )
+        if (epoch !== connectionGeneration || timer === undefined) return;
+        if (Date.now() - started >= ACTIVE_DURATION_MS) {
+          // Preserve this outage across connect attempts; reconnect must not skip
+          // the five-second pause by resetting the simulator's clock.
+          unavailableUntil = Date.now() + SILENT_DURATION_MS;
+          clearInterval(timer);
+          timer = undefined;
+          connectionGeneration++;
+          for (const listener of disconnectListeners) listener();
           return;
+        }
         const symbol = symbols[Math.floor(Math.random() * symbols.length)];
         if (!symbol) return;
         const previous = quotes[symbol];
@@ -58,7 +71,8 @@ export function createSimulator(initial: Readonly<Record<string, Quote>>): Price
       }, TICK_INTERVAL_MS);
     },
     disconnect() {
-      if (timer) clearInterval(timer);
+      connectionGeneration++;
+      if (timer !== undefined) clearInterval(timer);
       timer = undefined;
     },
   };

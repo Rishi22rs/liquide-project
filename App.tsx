@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MainTabs } from './src/navigation/MainTabs';
+import { AppNavigator } from './src/navigation/AppNavigator';
 import { watchlistStore } from './src/state/watchlist';
 import { loadMarket, stopMarket } from './src/state/market';
 
@@ -14,7 +14,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <MainTabs />
+      <AppNavigator />
     </SafeAreaProvider>
   );
 }

@@ -22,7 +22,7 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
-Still to implement: stock navigation/detail/chart, buy/sell sheet and transaction calculations, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
+Still to implement: buy/sell sheet and transaction calculations, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
 
 ## State and rendering
 
@@ -40,7 +40,7 @@ Missing fields stay undefined and render as `--`. OLDCO is deliberately never se
 
 Unit tests cover price conversion, stale/duplicate sequences, partial updates, unavailable prices, summary reconciliation, percentage denominators, and zero-denominator handling. Native device behavior and performance have **not** been verified yet. The current environment lacks configured iOS simulator tools; Android ADB startup is restricted in the sandbox.
 
-Next: verify the portfolio on your target device, measure rendering, then implement stock detail/orders. With another day after the core, prioritize device profiling, lifecycle handling, accessibility, and more feed/transaction tests before optional features.
+Next: verify the portfolio on your target device, measure rendering, then implement local orders. With another day after the core, prioritize device profiling, lifecycle handling, accessibility, and more feed/transaction tests before optional features.
 
 Time spent: not yet recorded; update with actual working time before submission.
 
@@ -94,4 +94,15 @@ Swipe left to reveal Remove, then tap it. `SwipeToRemove.tsx` uses PanResponder 
 
 Seven new tests cover saved-data validation, hydration protection, unique allowed-symbol additions, removal and restart persistence, serialized rapid edits, storage read/write recovery and day-change calculations. The full suite now has 18 tests. Mobile web checks covered tab navigation, picker filtering, additions, duplicate prevention, swipe reveal/removal, accessible removal, empty state, and persistence after reload. The shared API request fails in this browser preview, so populated live-price behavior and native gesture performance remain unverified. The iOS JavaScript bundle builds; that is not a native device test.
 
-Next: stock detail navigation, live OHLC statistics and a chart of ticks since opening, followed by local buy/sell transactions.
+Next: local buy/sell transactions, followed by native performance verification and submission preparation.
+
+
+## Step 4: stock detail and session chart
+
+Tapping a portfolio or watchlist row opens the shared `StockDetail` route in a typed native stack above the tabs. Back returns to the original tab/search/sort state. The detail toolbar keeps feed status visible while scrolling. It shows last price, day change, open, previous close, high, low and volume, plus the held position calculated from the same seed holdings and domain functions as the portfolio. Unheld stocks show an explicit empty position. Allowed symbols can be added/removed from the saved watchlist directly in detail; OLDCO remains unavailable and cannot be added to the allowed-symbol picker.
+
+`src/state/market.ts` publishes a separate accepted-price event after the quote sequence check. Only a supplied, valid price produces this event: volume-only, invalid-price and rejected stale ticks cannot create fake chart points. `useTickHistory.ts` attaches a per-screen history and cleans up its subscription on unmount. History is not persisted or seeded from the REST snapshot. Opening a stock starts an empty session, a single received tick is a dot, and two or more ticks produce a line. A refresh does not erase the screen's session; subsequent accepted ticks continue it.
+
+`src/domain/tickHistory.ts` owns pure history and geometry functions. The SVG chart plots actual receipt times and uses integer-paise prices. Its color compares the latest received price with the session's first price; the price header's day change separately compares last price with previous close. Long sessions retain their raw ticks in screen memory, but SVG rendering is limited to at most 240 actual points using first/last and bucket min/max sampling. Range labels use the entire session. History memory grows with time while the screen remains open; a production long-running screen could compact old buckets. The chart uses react-native-svg for lightweight cross-platform drawing rather than a larger chart library.
+
+Seven chart tests bring the suite to 25: empty/independent sessions, symbol/price validation, rapid ticks and listener cleanup, flat/single values, timestamp coordinates, equal-time ticks, and sampled endpoints/extrema. Browser UI verification covered both row entry points, Back preserving search state, watchlist toggling, OLDCO, unheld positions and swipe/tap separation. iOS bundling passes. The browser API request still fails, so populated chart appearance and native live-update/gesture performance remain to be checked on a device.

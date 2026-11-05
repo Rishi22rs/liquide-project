@@ -1,4 +1,3 @@
-import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +5,7 @@ import { PortfolioScreen } from '../features/portfolio/PortfolioScreen';
 import { WatchlistScreen } from '../features/watchlist/WatchlistScreen';
 import { useTheme } from '../theme/theme';
 
-type MainTabParams = { Portfolio: undefined; Watchlist: undefined };
+import type { MainTabParams } from './types';
 const Tab = createBottomTabNavigator<MainTabParams>();
 
 function TabIcon({ name, color }: { name: keyof MainTabParams; color: string }) {
@@ -33,41 +32,27 @@ export function MainTabs() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <NavigationContainer
-      theme={{
-        ...DarkTheme,
-        colors: {
-          ...DarkTheme.colors,
-          primary: theme.primary,
-          background: theme.bg,
-          card: theme.card,
-          text: theme.text,
-          border: theme.line,
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: theme.accentText,
+        tabBarInactiveTintColor: theme.muted,
+        tabBarStyle: {
+          backgroundColor: theme.card,
+          borderTopColor: theme.line,
+          height: 64 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
-      }}
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarIcon: ({ color }) => <TabIcon name={route.name} color={color} />,
+        // Preserve each screen's search/sort state while switching tabs.
+        lazy: true,
+      })}
     >
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarActiveTintColor: theme.accentText,
-          tabBarInactiveTintColor: theme.muted,
-          tabBarStyle: {
-            backgroundColor: theme.card,
-            borderTopColor: theme.line,
-            height: 64 + insets.bottom,
-            paddingTop: 8,
-            paddingBottom: Math.max(insets.bottom, 8),
-          },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-          tabBarIcon: ({ color }) => <TabIcon name={route.name} color={color} />,
-          // Preserve each screen's search/sort state while switching tabs.
-          lazy: true,
-        })}
-      >
-        <Tab.Screen name="Portfolio" component={PortfolioScreen} />
-        <Tab.Screen name="Watchlist" component={WatchlistScreen} />
-      </Tab.Navigator>
-    </NavigationContainer>
+      <Tab.Screen name="Portfolio" component={PortfolioScreen} />
+      <Tab.Screen name="Watchlist" component={WatchlistScreen} />
+    </Tab.Navigator>
   );
 }
 const iconStyles = StyleSheet.create({

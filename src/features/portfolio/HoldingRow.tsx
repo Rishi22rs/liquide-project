@@ -1,8 +1,9 @@
 import { memo } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { money, percent, position, type Holding } from '../../domain/portfolio';
 import { useQuote } from '../../state/market';
 import type { Theme } from '../../theme/theme';
+import { useOpenStock } from '../../navigation/useOpenStock';
 import { styles } from './styles';
 
 // Each row subscribes to its own quote. Other symbols keep the same snapshot
@@ -14,12 +15,21 @@ export const HoldingRow = memo(function HoldingRow({
   holding: Holding;
   theme: Theme;
 }) {
+  const openStock = useOpenStock();
   const quote = useQuote(holding.symbol);
   const metrics = position(holding, quote);
   const pnlColor =
     metrics.pnl === undefined ? theme.muted : metrics.pnl >= 0 ? theme.gain : theme.loss;
   return (
-    <View style={[styles.row, { borderColor: theme.line }]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${holding.symbol} details`}
+      onPress={() => openStock(holding.symbol)}
+      style={({ pressed }) => [
+        styles.row,
+        { borderColor: theme.line, opacity: pressed ? 0.65 : 1 },
+      ]}
+    >
       <View
         style={[
           styles.monogram,
@@ -48,6 +58,6 @@ export const HoldingRow = memo(function HoldingRow({
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 });

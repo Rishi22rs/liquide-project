@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { PriceTick } from '../domain/tickHistory';
 import { fetchQuotes } from '../data/api';
 import { mergeTick, type Quote, type Tick } from '../domain/portfolio';
 import { createSimulator, type PriceFeed } from '../feed/simulator';
@@ -12,6 +13,7 @@ type MarketStatus = Readonly<{
 const PAUSED_AFTER_MS = 2_000;
 const HEALTH_CHECK_INTERVAL_MS = 500;
 const listeners = new Set<() => void>();
+const priceTickListeners = new Set<(tick: PriceTick) => void>();
 
 // Quotes and status have separate snapshot identities. A price tick should not
 // render components that only care about connection/loading status.
@@ -33,6 +35,14 @@ export function subscribeToMarket(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
+  };
+}
+
+/** Event subscription preserves each accepted price tick even when React batches renders. */
+export function subscribeToPriceTicks(listener: (tick: PriceTick) => void): () => void {
+  priceTickListeners.add(listener);
+  return () => {
+    priceTickListeners.delete(listener);
   };
 }
 
@@ -73,6 +83,15 @@ function handleTick(tick: Tick): void {
 
   quotes = { ...quotes, [tick.symbol]: updatedQuote };
   lastAcceptedTickAt = Date.now();
+  // Emit only a valid supplied price. Partial ticks must not fabricate chart points.
+  if (tick.ltp !== undefined && Number.isSafeInteger(tick.ltp) && tick.ltp >= 0) {
+    const priceTick: PriceTick = {
+      symbol: tick.symbol,
+      price: tick.ltp,
+      receivedAt: lastAcceptedTickAt,
+    };
+    for (const listener of priceTickListeners) listener(priceTick);
+  }
   if (status.paused) status = { ...status, paused: false };
   notifySubscribers();
 }

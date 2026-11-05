@@ -5,6 +5,7 @@ import { dayChange, money, percent } from '../../domain/portfolio';
 import { useQuote } from '../../state/market';
 import { watchlistStore } from '../../state/watchlist';
 import type { Theme } from '../../theme/theme';
+import { useOpenStock } from '../../navigation/useOpenStock';
 import { styles } from './styles';
 
 // Adding/removing a different stock never changes this row's quote subscription.
@@ -15,6 +16,7 @@ export const WatchlistRow = memo(function WatchlistRow({
   symbol: string;
   theme: Theme;
 }) {
+  const openStock = useOpenStock();
   const quote = useQuote(symbol);
   const change = dayChange(quote);
   const color =
@@ -29,6 +31,7 @@ export const WatchlistRow = memo(function WatchlistRow({
     <SwipeToRemove
       label={symbol}
       onRemove={remove}
+      onPress={() => openStock(symbol)}
       theme={theme}
       accessibilityLabel={`${symbol}, last price ${money(quote?.ltp)}, day change ${money(change.amount)}, ${percent(change.percentage)}`}
     >

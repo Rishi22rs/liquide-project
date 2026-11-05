@@ -18,6 +18,7 @@ type Props = {
   label: string;
   accessibilityLabel: string;
   onRemove: () => void;
+  onPress: () => void;
   theme: Theme;
 };
 
@@ -28,10 +29,13 @@ export function SwipeToRemove({
   label,
   accessibilityLabel,
   onRemove,
+  onPress,
   theme,
 }: Props) {
   const translateX = useRef(new Animated.Value(0)).current;
   const startingOffset = useRef(0);
+  const captureDelta = useRef(0);
+  const lastSwipeAt = useRef(0);
   const currentOffset = useRef(0);
   const [open, setOpen] = useState(false);
 
@@ -49,11 +53,25 @@ export function SwipeToRemove({
 
   const responder = useRef(
     PanResponder.create({
+      // Capture horizontal movement before the row's tap handler claims it.
+      onMoveShouldSetPanResponderCapture: (_, gesture) => {
+        const horizontal =
+          Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5;
+        if (horizontal) captureDelta.current = gesture.dx;
+        return horizontal;
+      },
       onMoveShouldSetPanResponder: (_, gesture) =>
         Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
       onPanResponderGrant: () => {
         translateX.stopAnimation();
-        startingOffset.current = currentOffset.current;
+        // PanResponder resets dx on grant. Preserve the movement that claimed
+        // the gesture so short/flick swipes do not lose their initial distance.
+        startingOffset.current = currentOffset.current + captureDelta.current;
+        currentOffset.current = Math.max(
+          -ACTION_WIDTH,
+          Math.min(0, startingOffset.current),
+        );
+        translateX.setValue(currentOffset.current);
       },
       onPanResponderMove: (_, gesture) => {
         const nextOffset = Math.max(
@@ -63,11 +81,14 @@ export function SwipeToRemove({
         currentOffset.current = nextOffset;
         translateX.setValue(nextOffset);
       },
-      onPanResponderRelease: (_, gesture) =>
+      onPanResponderRelease: (_, gesture) => {
+        lastSwipeAt.current = Date.now();
+        // A quick gesture may end before another move event is delivered.
+        const releaseOffset = startingOffset.current + gesture.dx;
         settle(
-          gesture.vx < -0.4 ||
-            (gesture.vx <= 0.4 && currentOffset.current < -ACTION_WIDTH / 2),
-        ),
+          gesture.vx < -0.4 || (gesture.vx <= 0.4 && releaseOffset < -ACTION_WIDTH / 2),
+        );
+      },
       onPanResponderTerminate: () => settle(false),
     }),
   ).current;
@@ -114,8 +135,16 @@ export function SwipeToRemove({
       >
         <Pressable
           accessible
+          accessibilityRole="button"
+          onPress={() => {
+            // Browsers may emit a click after a completed drag. Do not treat it
+            // as a row tap that closes the action or opens detail accidentally.
+            if (Date.now() - lastSwipeAt.current < 250) return;
+            if (open) settle(false);
+            else onPress();
+          }}
           accessibilityLabel={accessibilityLabel}
-          accessibilityHint="Swipe left or long press for the remove action."
+          accessibilityHint="Opens stock detail. Swipe left or long press for the remove action."
           accessibilityActions={[
             { name: 'remove', label: `Remove ${label} from watchlist` },
           ]}

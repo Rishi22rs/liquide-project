@@ -6,6 +6,8 @@ type Props = {
   onChangeText: (value: string) => void;
   theme: Theme;
   accessibilityLabel?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export function SearchField({
@@ -13,6 +15,8 @@ export function SearchField({
   onChangeText,
   theme,
   accessibilityLabel = 'Filter holdings by symbol',
+  onFocus,
+  onBlur,
 }: Props) {
   return (
     <View style={[styles.container, { borderColor: theme.inputBorder }]}>
@@ -27,6 +31,8 @@ export function SearchField({
         placeholderTextColor={theme.muted}
         value={value}
         onChangeText={onChangeText}
+        onFocus={onFocus}
+        onBlur={onBlur}
         autoCapitalize="characters"
         autoCorrect={false}
         selectionColor={theme.primary}

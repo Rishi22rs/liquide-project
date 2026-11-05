@@ -146,18 +146,6 @@ export function useChartInteraction(
     setSelected(undefined);
   }
 
-  function zoom(factor: number) {
-    const bounds = manualBounds.current ?? chartTimeBounds(pointsRef.current);
-    if (!bounds || bounds.end <= bounds.start) return;
-    manualBounds.current = bounds;
-    const current = windowRef.current ?? bounds;
-    const focal = selected
-      ? (selected.receivedAt - current.start) / (current.end - current.start)
-      : 0.5;
-    updateWindow(zoomChartWindow(bounds, current, factor, focal));
-    setSelected(undefined);
-  }
-
   function stepSelection(direction: number) {
     const bounds = windowRef.current ?? chartTimeBounds(pointsRef.current);
     if (!bounds) return;
@@ -185,7 +173,6 @@ export function useChartInteraction(
     timeWindow,
     selected,
     reset,
-    zoom,
     stepSelection,
   };
 }

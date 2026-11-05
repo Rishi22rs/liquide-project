@@ -1,16 +1,15 @@
 import { memo, useId, useMemo, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Line, Path, Stop } from 'react-native-svg';
 import {
   buildTickChart,
   chartPointCoordinate,
   type ChartPoint,
 } from '../../domain/tickHistory';
-import { chartTimeBounds, MAX_CHART_ZOOM } from '../../domain/chartInteraction';
+import { chartTimeBounds } from '../../domain/chartInteraction';
 import { money } from '../../domain/portfolio';
 import type { Theme } from '../../theme/theme';
 import { useChartInteraction } from './useChartInteraction';
-import { ChartZoomControls } from './ChartZoomControls';
 import { styles } from './styles';
 
 function clockTime(timestamp: number, precise = false): string {
@@ -75,13 +74,6 @@ export const InteractiveTickChart = memo(function InteractiveTickChart({
           visiblePoints.length <= 1 ? 0.5 : selectedIndex / (visiblePoints.length - 1),
         )
       : undefined;
-  const span = window ? window.end - window.start : 0;
-  const zoom =
-    fullBounds && span > 0
-      ? Math.max(1, Math.min(MAX_CHART_ZOOM, (fullBounds.end - fullBounds.start) / span))
-      : 1;
-  const canZoom =
-    points.length >= 2 && Boolean(fullBounds && fullBounds.end > fullBounds.start);
   const tooltipLeft = crosshair
     ? Math.max(0, Math.min(frameWidth - 118, (crosshair.x / 320) * frameWidth - 59))
     : 0;
@@ -90,11 +82,26 @@ export const InteractiveTickChart = memo(function InteractiveTickChart({
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.line }]}>
       <View style={styles.cardTop}>
         <Text style={[styles.eyebrow, { color: theme.muted }]}>LIVE PRICE</Text>
-        <View style={[styles.badge, { borderColor: theme.line }]}>
-          <Text style={[styles.eyebrow, { color: theme.accentText }]}>
-            {timeWindow ? 'EXPLORING' : 'SINCE OPENED'}
-          </Text>
-        </View>
+        {timeWindow || selected ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Reset chart view"
+            onPress={interaction.reset}
+            hitSlop={12}
+            style={({ pressed }) => [
+              styles.badge,
+              { borderColor: theme.line, opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text style={[styles.eyebrow, { color: theme.accentText }]}>RESET VIEW</Text>
+          </Pressable>
+        ) : (
+          <View style={[styles.badge, { borderColor: theme.line }]}>
+            <Text style={[styles.eyebrow, { color: theme.accentText }]}>
+              SINCE OPENED
+            </Text>
+          </View>
+        )}
       </View>
       <View style={chartStyles.readout}>
         <Text
@@ -119,7 +126,7 @@ export const InteractiveTickChart = memo(function InteractiveTickChart({
         accessible
         accessibilityRole="adjustable"
         accessibilityLabel="Interactive price chart"
-        accessibilityHint="Drag to inspect recorded prices. Pinch or use the zoom buttons to zoom."
+        accessibilityHint="Drag to inspect recorded prices. Pinch with two fingers to zoom."
         accessibilityState={{ disabled: points.length === 0 }}
         accessibilityValue={{
           min: 0,
@@ -284,15 +291,6 @@ export const InteractiveTickChart = memo(function InteractiveTickChart({
           </View>
         </>
       )}
-      <ChartZoomControls
-        zoom={zoom}
-        canZoomIn={canZoom && zoom < MAX_CHART_ZOOM}
-        canZoomOut={canZoom && zoom > 1}
-        canReset={Boolean(timeWindow || selected)}
-        onZoom={interaction.zoom}
-        onReset={interaction.reset}
-        theme={theme}
-      />
       <Text style={[chartStyles.help, { color: theme.muted }]}>
         Pinch to zoom · Touch and drag to inspect
       </Text>

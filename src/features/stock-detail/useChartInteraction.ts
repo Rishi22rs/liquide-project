@@ -100,6 +100,9 @@ export function useChartInteraction(
     active.current = false;
     origin.current.ready = false;
     pinch.current = undefined;
+    // Inspection is temporary: lifting the final finger hides the crosshair,
+    // marker and price/time readout, while preserving the chosen zoom window.
+    setSelected(undefined);
     callbackRef.current(false);
   }
 
@@ -131,7 +134,8 @@ export function useChartInteraction(
         if (active.current) handleTouches(readTouches(event));
       },
       onPanResponderEnd: (event) => {
-        if (active.current) handleTouches(readTouches(event));
+        if (event.nativeEvent.touches.length === 0) finishGesture();
+        else if (active.current) handleTouches(readTouches(event));
       },
       onPanResponderRelease: finishGesture,
       onPanResponderTerminate: finishGesture,

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SwipeToRemove } from '../../components/SwipeToRemove';
 import { dayChange, money, percent } from '../../domain/portfolio';
 import { useQuote } from '../../state/market';
@@ -26,7 +26,12 @@ export const WatchlistRow = memo(function WatchlistRow({
   const remove = () => watchlistStore.remove(symbol);
 
   return (
-    <SwipeToRemove label={symbol} onRemove={remove} theme={theme}>
+    <SwipeToRemove
+      label={symbol}
+      onRemove={remove}
+      theme={theme}
+      accessibilityLabel={`${symbol}, last price ${money(quote?.ltp)}, day change ${money(change.amount)}, ${percent(change.percentage)}`}
+    >
       <View style={[styles.row, { borderColor: theme.line }]}>
         <View
           style={[
@@ -39,16 +44,15 @@ export const WatchlistRow = memo(function WatchlistRow({
           </Text>
         </View>
         <View style={styles.flex}>
-          <Text style={[styles.symbol, { color: theme.text }]}>{symbol}</Text>
-          <Text style={[styles.caption, { color: theme.muted }]}>NSE · Equity</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${symbol}`}
-            onPress={remove}
-            style={styles.removeLink}
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            style={[styles.symbol, { color: theme.text }]}
           >
-            <Text style={[styles.removeLabel, { color: theme.muted }]}>Remove</Text>
-          </Pressable>
+            {symbol}
+          </Text>
+          <Text style={[styles.caption, { color: theme.muted }]}>NSE · Equity</Text>
         </View>
         <View style={styles.right}>
           <Text style={[styles.price, { color: theme.text }]}>{money(quote?.ltp)}</Text>

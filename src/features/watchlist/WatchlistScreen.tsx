@@ -140,8 +140,8 @@ export function WatchlistScreen() {
                     {watchlist.saving ? 'Saving…' : 'PRICE / DAY CHANGE'}
                   </Text>
                 </View>
-                <Text style={[styles.caption, { color: theme.muted }]}>
-                  Swipe left to remove a stock
+                <Text style={[styles.swipeHint, { color: theme.muted }]}>
+                  Swipe left or hold a stock for actions
                 </Text>
               </>
             )}

@@ -4,13 +4,24 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   screen: { flex: 1 },
   expandedHeader: {
-    paddingTop: 82,
+    paddingTop: 18,
     paddingBottom: 22,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   listHeaderContent: { paddingHorizontal: 18, paddingTop: 18 },
+  stickyControls: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  columnHeadings: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
   rowContainer: { paddingHorizontal: 18 },
   loadingPlaceholder: { paddingVertical: 64, alignItems: 'center', gap: 12 },
   header: { paddingHorizontal: 22, paddingTop: 4, paddingBottom: 0 },

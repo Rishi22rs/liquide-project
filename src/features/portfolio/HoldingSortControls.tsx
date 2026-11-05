@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SortDirectionIcon } from '../../components/SortDirectionIcon';
 import type { HoldingSortKey, SortDirection } from '../../domain/portfolio';
 import type { Theme } from '../../theme/theme';
 
@@ -69,14 +70,17 @@ export function HoldingSortControls({
           accessibilityRole="button"
           accessibilityLabel={`Sort ${direction === 'ascending' ? 'descending' : 'ascending'}`}
           onPress={onToggleDirection}
-          style={[
+          accessibilityHint={`Currently ${direction}. Tap to reverse the order.`}
+          style={({ pressed }) => [
             styles.direction,
-            { borderColor: theme.line, backgroundColor: theme.card },
+            {
+              borderColor: theme.line,
+              backgroundColor: pressed ? theme.elevated : theme.card,
+              opacity: pressed ? 0.8 : 1,
+            },
           ]}
         >
-          <Text style={[styles.arrow, { color: theme.accentText }]}>
-            {direction === 'ascending' ? '↑' : '↓'}
-          </Text>
+          <SortDirectionIcon direction={direction} color={theme.accentText} />
         </Pressable>
       </View>
       <Text style={[styles.description, { color: theme.muted }]}>{description}</Text>
@@ -86,30 +90,31 @@ export function HoldingSortControls({
 
 const styles = StyleSheet.create({
   container: { marginTop: 14, gap: 9 },
-  controls: { flexDirection: 'row', gap: 10 },
+  controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   options: {
     flex: 1,
     flexDirection: 'row',
+    height: 48,
+    alignItems: 'stretch',
     borderWidth: 1,
     borderRadius: 14,
     padding: 4,
   },
   option: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 38,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
   },
   label: { fontSize: 12, fontWeight: '700' },
   direction: {
-    width: 50,
-    minHeight: 50,
+    width: 48,
+    height: 48,
     borderWidth: 1,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  arrow: { fontSize: 22 },
   description: { fontSize: 10, lineHeight: 15 },
 });

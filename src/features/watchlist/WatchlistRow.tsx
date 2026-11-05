@@ -1,3 +1,4 @@
+import { PriceFlash } from '../../components/PriceFlash';
 import { memo } from 'react';
 import { Text, View } from 'react-native';
 import { SwipeToRemove } from '../../components/SwipeToRemove';
@@ -58,7 +59,9 @@ export const WatchlistRow = memo(function WatchlistRow({
           <Text style={[styles.caption, { color: theme.muted }]}>NSE · Equity</Text>
         </View>
         <View style={styles.right}>
-          <Text style={[styles.price, { color: theme.text }]}>{money(quote?.ltp)}</Text>
+          <PriceFlash price={quote?.ltp} theme={theme}>
+            <Text style={[styles.price, { color: theme.text }]}>{money(quote?.ltp)}</Text>
+          </PriceFlash>
           <Text style={[styles.change, { color }]}>
             {money(change.amount)} ({percent(change.percentage)})
           </Text>

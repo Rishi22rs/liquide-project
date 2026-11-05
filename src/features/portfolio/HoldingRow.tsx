@@ -1,3 +1,4 @@
+import { PriceFlash } from '../../components/PriceFlash';
 import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { money, percent, position, type Holding } from '../../domain/portfolio';
@@ -45,9 +46,11 @@ export const HoldingRow = memo(function HoldingRow({
         <Text style={[styles.caption, { color: theme.muted }]}>
           {holding.qty} shares · Avg {money(holding.avgPricePaise)}
         </Text>
-        <Text style={[styles.caption, { color: theme.muted }]}>
-          Last {money(quote?.ltp)}
-        </Text>
+        <PriceFlash price={quote?.ltp} theme={theme} style={{ alignSelf: 'flex-start' }}>
+          <Text style={[styles.caption, { color: theme.muted }]}>
+            Last {money(quote?.ltp)}
+          </Text>
+        </PriceFlash>
       </View>
       <View style={styles.right}>
         <Text style={[styles.symbol, { color: theme.text }]}>{money(metrics.value)}</Text>

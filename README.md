@@ -22,7 +22,7 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
-Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. No stretch goals yet.
+Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. The first stretch goal, price-cell flash, is implemented; native verification is pending.
 
 ## State and rendering
 
@@ -110,7 +110,7 @@ Seven chart tests bring the suite to 25: empty/independent sessions, symbol/pric
 
 ## Interactive chart: pinch zoom and exact tick inspection
 
-Touch the plot and drag horizontally to inspect a recorded tick. While a finger is held on the plot, a vertical crosshair, price dot and tooltip show that tick's integer-paise price and receipt time (including milliseconds). Lifting the final finger or cancelling the gesture clears the inspection readout immediately, preserving the zoom window. Selection searches the full raw history, including ticks omitted from the simplified SVG line; it never estimates a price between ticks. The chart is paused in an exploration window while inspecting, while the feed, last-price header and holdings keep updating. Reset returns to the complete live session.
+Swipe horizontally to browse recorded ticks; hold briefly before dragging to inspect a recorded tick. While a finger is held on the plot, a vertical crosshair, price dot and tooltip show that tick's integer-paise price and receipt time (including milliseconds). Lifting the final finger or cancelling the gesture clears the inspection readout immediately, preserving the zoom window. Selection searches the full raw history, including ticks omitted from the simplified SVG line; it never estimates a price between ticks. The chart is paused in an exploration window while inspecting, while the feed, last-price header and holdings keep updating. Reset returns to following live ticks. The time axis initially fits the session, then follows a rolling one-minute window to limit compression; older ticks remain available by swiping.
 
 Two-finger pinch zooms between 1x and 16x around the finger midpoint. Moving the midpoint moves the time window within the recorded session. Per user preference, zoom is gesture-only: no +/- buttons or zoom multiplier are displayed. A compact Reset view action appears in the chart heading while exploring. Empty time intervals explicitly show that no ticks were recorded there; they do not fabricate points. The detail ScrollView is temporarily disabled only while the chart owns a gesture, then restored on release/cancellation. Screen-reader actions can step through received ticks.
 
@@ -130,3 +130,12 @@ On a buy, cost basis increases by `quantity * fill price` and average cost is `n
 Trades and receipts are session-only and reset to the bundled holdings when the app restarts. Only the watchlist is persisted, as explicitly required by the brief. Order history, fees, account cash and cross-device sync are outside the core scope. While the feed is paused, simulated orders may fill at the last received price; the sheet discloses this. No price is fabricated if a quote is missing.
 
 Sixteen transaction tests bring the suite to 51, covering strict quantities, repeated weighted buys, partial/full sells, exact half-paise/large-value allocation, overselling, missing/invalid prices, safe-integer limits, latest-price fills, atomic publication, idempotence, failure recovery, reference isolation, new/rebought positions and row/summary reconciliation. With real OHLC-seeded simulated prices in the local web proxy preview, UI checks covered invalid fractional quantity, buy 25→27 shares, oversized sale rejection, partial sell preserving the average, Max/full sell, portfolio row/count removal, exact invested-total reconciliation, OLDCO protection and creation of a new watched-stock position. The iOS bundle builds; native keyboard, device gestures and profiling remain unverified.
+
+
+## Bonus 1: price-cell flash
+
+Portfolio last-price cells and Watchlist price cells flash a subtle green on an increase or red on a decrease relative to the previous displayed price, then fade over 450 ms. This direction is independent of the position's gain/loss or day change. Initial quotes, unchanged prices, missing values, and remounts do not trigger a flash. The reusable `PriceFlash` component owns two background opacity layers; the text and row layout stay stable. A new price stops the previous animation before starting the correct direction, and unmount stops both animations.
+
+On Android/iOS, `Animated.timing` uses the native driver so opacity frames run on the UI thread; detecting new prices and scheduling the animation still happens in JavaScript. `isInteraction: false` avoids holding the list's interaction queue open. Web uses the JS driver and does not demonstrate the UI-thread bonus. Reduce Motion disables flashes, including changes to the setting while the app is open. No new animation dependency was added. TypeScript, the 53 domain tests and iOS bundling are checked; native visual behavior, accessibility settings and performance still require device verification.
+
+Remaining optional bonuses: reconnect/backoff with catch-up fetch, limit orders, persisted order history, and developer simulator controls.

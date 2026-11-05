@@ -22,7 +22,7 @@ import { SearchField } from '../../components/SearchField';
 import type { Holding, HoldingSortKey, SortDirection } from '../../domain/portfolio';
 import { HoldingSortControls } from './HoldingSortControls';
 import { useSortedHoldings } from './useSortedHoldings';
-import { HOLDINGS } from '../../data/holdings';
+import { useHoldings } from '../../state/holdings';
 import { loadMarket, useMarketStatus } from '../../state/market';
 import type { Theme } from '../../theme/theme';
 import { HoldingRow } from './HoldingRow';
@@ -70,10 +70,11 @@ export function HoldingsList({ theme, onScroll, expandedHeader }: Props) {
   const [sortKey, setSortKey] = useState<HoldingSortKey>('name');
   const [direction, setDirection] = useState<SortDirection>('ascending');
   const status = useMarketStatus();
+  const holdings = useHoldings();
   const filteredHoldings = useMemo(
     () =>
-      HOLDINGS.filter((holding) => holding.symbol.includes(query.trim().toUpperCase())),
-    [query],
+      holdings.filter((holding) => holding.symbol.includes(query.trim().toUpperCase())),
+    [holdings, query],
   );
   const data = useSortedHoldings(filteredHoldings, sortKey, direction);
 
@@ -143,7 +144,7 @@ export function HoldingsList({ theme, onScroll, expandedHeader }: Props) {
                 <Text style={[styles.heading, { color: theme.text }]}>Your holdings</Text>
                 <View style={[styles.countBadge, { backgroundColor: theme.elevated }]}>
                   <Text style={[styles.countText, { color: theme.text }]}>
-                    {HOLDINGS.length}
+                    {holdings.length}
                   </Text>
                 </View>
               </View>
@@ -185,7 +186,9 @@ export function HoldingsList({ theme, onScroll, expandedHeader }: Props) {
           </View>
         ) : (
           <Text style={[styles.empty, { color: theme.muted }]}>
-            No holdings match “{query}”.
+            {holdings.length === 0
+              ? 'No holdings yet. Add a stock to your watchlist and open its detail to buy shares.'
+              : `No holdings match “${query}”.`}
           </Text>
         )
       }

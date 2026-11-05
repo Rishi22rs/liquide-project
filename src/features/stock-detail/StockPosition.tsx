@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import { HOLDINGS } from '../../data/holdings';
+import { useHolding } from '../../state/holdings';
 import { money, percent, position, type Quote } from '../../domain/portfolio';
 import type { Theme } from '../../theme/theme';
 import { styles } from './styles';
@@ -13,7 +13,7 @@ export function StockPosition({
   quote?: Quote;
   theme: Theme;
 }) {
-  const holding = HOLDINGS.find((item) => item.symbol === symbol);
+  const holding = useHolding(symbol);
   if (!holding)
     return (
       <View

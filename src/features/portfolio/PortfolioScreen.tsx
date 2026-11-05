@@ -3,7 +3,7 @@ import { Animated, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HOLDINGS } from '../../data/holdings';
+import { useHoldings } from '../../state/holdings';
 import { GradientButton } from '../../components/GradientButton';
 import { loadMarket, useMarketStatus } from '../../state/market';
 import { useTheme } from '../../theme/theme';
@@ -14,6 +14,7 @@ import { styles } from './styles';
 export function PortfolioScreen() {
   const theme = useTheme();
   const status = useMarketStatus();
+  const holdings = useHoldings();
   const scrollY = useRef(new Animated.Value(0)).current;
 
   // Native scroll events drive opacity without a React state update per frame.
@@ -45,7 +46,7 @@ export function PortfolioScreen() {
             </Text>
             <View style={styles.headerMetadata}>
               <Text style={[styles.headerMetadataText, { color: theme.accentText }]}>
-                {HOLDINGS.length} holdings
+                {holdings.length} holdings
               </Text>
               <View style={[styles.metadataDivider, { backgroundColor: theme.line }]} />
               <Text style={[styles.headerMetadataText, { color: theme.muted }]}>

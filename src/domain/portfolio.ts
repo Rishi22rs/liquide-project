@@ -1,5 +1,12 @@
-// Domain values use integer paise; undefined means unavailable, never zero.
-export type Holding = Readonly<{ symbol: string; qty: number; avgPricePaise: number }>;
+// Money amounts use integer paise; weighted averages retain sub-paise precision.
+// Undefined means unavailable, never zero.
+export type Holding = Readonly<{
+  symbol: string;
+  qty: number;
+  // A weighted average may contain fractions of a paise; money() rounds its display.
+  avgPricePaise: number;
+  costBasisPaise?: number;
+}>;
 export type Quote = Readonly<{
   symbol: string;
   seq: number;
@@ -19,7 +26,7 @@ export type Tick = {
   volume?: number;
 };
 
-// All stored prices and displayed money amounts are integer paise.
+// Quote prices are rounded once on ingestion; average-cost display rounds separately.
 export function toPaise(rupees: number): number {
   if (!Number.isFinite(rupees) || rupees < 0) throw new Error('Invalid price');
   return Math.round((rupees + Number.EPSILON) * 100);
@@ -43,7 +50,7 @@ export function mergeTick(previous: Quote | undefined, tick: Tick): Quote | unde
 }
 /** Calculate a single position without depending on React or shared state. */
 export function position(holding: Holding, quote?: Quote) {
-  const invested = holding.qty * holding.avgPricePaise;
+  const invested = holding.costBasisPaise ?? holding.qty * holding.avgPricePaise;
   const value = quote?.ltp === undefined ? undefined : holding.qty * quote.ltp;
   const pnl = value === undefined ? undefined : value - invested;
   const dayPnl =

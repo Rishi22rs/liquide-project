@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { HOLDINGS } from '../../data/holdings';
+import { useHoldings } from '../../state/holdings';
 import { money, percent, summarize } from '../../domain/portfolio';
 import { useQuotes } from '../../state/market';
 import type { Theme } from '../../theme/theme';
@@ -9,10 +9,11 @@ import { styles } from './styles';
 // Only this card needs the whole quote map. Other holdings update independently.
 export function PortfolioSummary({ theme }: { theme: Theme }) {
   const quotes = useQuotes();
-  const summary = summarize(HOLDINGS, quotes);
-  const hasPrices = summary.missing < HOLDINGS.length;
+  const holdings = useHoldings();
+  const summary = summarize(holdings, quotes);
+  const hasPrices = summary.missing < holdings.length || holdings.length === 0;
   const pnlColor = !hasPrices ? theme.muted : summary.pnl >= 0 ? theme.gain : theme.loss;
-  const hasDayPrices = summary.missingDay < HOLDINGS.length;
+  const hasDayPrices = summary.missingDay < holdings.length || holdings.length === 0;
   const dayColor = !hasDayPrices
     ? theme.muted
     : summary.dayPnl >= 0

@@ -10,6 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { TradeActions } from '../trade/TradeActions';
+import { TradeSheet } from '../trade/TradeSheet';
+import type { TradeSide } from '../../domain/trading';
 import type { RootStackParams } from '../../navigation/types';
 import { SYMBOLS } from '../../data/holdings';
 import { dayChange, money, percent } from '../../domain/portfolio';
@@ -27,6 +30,7 @@ export function StockDetailScreen({ route, navigation }: Props) {
   const { symbol } = route.params;
   const theme = useTheme();
   const [chartInteracting, setChartInteracting] = useState(false);
+  const [tradeSide, setTradeSide] = useState<TradeSide>();
   const quote = useQuote(symbol);
   const status = useMarketStatus();
   const watchlist = useWatchlist();
@@ -202,6 +206,15 @@ export function StockDetailScreen({ route, navigation }: Props) {
         <StockStatistics quote={quote} theme={theme} />
         <StockPosition symbol={symbol} quote={quote} theme={theme} />
       </ScrollView>
+      <TradeActions symbol={symbol} onOpen={setTradeSide} theme={theme} />
+      {tradeSide && (
+        <TradeSheet
+          symbol={symbol}
+          initialSide={tradeSide}
+          onClose={() => setTradeSide(undefined)}
+          theme={theme}
+        />
+      )}
     </SafeAreaView>
   );
 }

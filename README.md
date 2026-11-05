@@ -22,7 +22,7 @@ npm test
 
 Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
-Still to implement: buy/sell sheet and transaction calculations, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
+Remaining before submission: native device verification, performance profiling, accessibility refinement, README finalization and the screen recording. No stretch goals yet.
 
 ## State and rendering
 
@@ -32,7 +32,7 @@ Still to implement: buy/sell sheet and transaction calculations, accessibility r
 
 ## Money and missing data
 
-API rupee prices are rounded once to integer paise. Starting average prices are integer paise. Multiplication by whole share quantities and summation then remain integer operations. Summary money values therefore equal the displayed row amounts. Trade average-cost precision/rounding will be defined and tested when orders are implemented.
+API rupee prices are rounded once to integer paise. Starting average prices are integer paise. Multiplication by whole share quantities and summation then remain integer operations. Summary money values therefore equal the displayed row amounts. Trades retain an explicit integer-paise cost basis; weighted averages retain sub-paise precision until display. Partial-sale allocation uses exact integer division with half-paise ties rounded up.
 
 Missing fields stay undefined and render as `--`. OLDCO is deliberately never seeded with a fabricated price. The summary labels market value and total P&L as priced holdings subtotals; excludes missing holdings from both those values and the P&L percentage denominator; reports the missing count; and separately shows invested cost for all holdings. With no priced holdings, value and P&L display `--`. Today's P&L uses `(last - previous close) * current quantity`; its percentage uses previous-close value for the same eligible positions. This is current-position day change, not realized intraday trade accounting. Holdings lacking previous close are excluded from this subtotal too.
 
@@ -40,7 +40,7 @@ Missing fields stay undefined and render as `--`. OLDCO is deliberately never se
 
 Unit tests cover price conversion, stale/duplicate sequences, partial updates, unavailable prices, summary reconciliation, percentage denominators, and zero-denominator handling. Native device behavior and performance have **not** been verified yet. The current environment lacks configured iOS simulator tools; Android ADB startup is restricted in the sandbox.
 
-Next: verify the portfolio on your target device, measure rendering, then implement local orders. With another day after the core, prioritize device profiling, lifecycle handling, accessibility, and more feed/transaction tests before optional features.
+Next: test all flows on the target device, profile rendering and prepare the submission recording. With another day after the core, prioritize lifecycle handling, accessibility and additional edge-case verification before optional features.
 
 Time spent: not yet recorded; update with actual working time before submission.
 
@@ -94,7 +94,7 @@ Swipe left to reveal Remove, then tap it. `SwipeToRemove.tsx` uses PanResponder 
 
 Seven new tests cover saved-data validation, hydration protection, unique allowed-symbol additions, removal and restart persistence, serialized rapid edits, storage read/write recovery and day-change calculations. The full suite now has 18 tests. Mobile web checks covered tab navigation, picker filtering, additions, duplicate prevention, swipe reveal/removal, accessible removal, empty state, and persistence after reload. The shared API request fails in this browser preview, so populated live-price behavior and native gesture performance remain unverified. The iOS JavaScript bundle builds; that is not a native device test.
 
-Next: local buy/sell transactions, followed by native performance verification and submission preparation.
+Next: native performance verification and submission preparation.
 
 
 ## Step 4: stock detail and session chart
@@ -117,3 +117,16 @@ Two-finger pinch zooms between 1x and 16x around the finger midpoint. Moving the
 `src/domain/chartInteraction.ts` contains pure viewport and selection math. `useChartInteraction.ts` handles touches, measurement and gesture lifecycle. `InteractiveTickChart.tsx` renders the data, crosshair and tooltip; `LiveTickChart.tsx` remains the feed/session wrapper. SVG geometry and crosshair coordinates use the same bounds so their price/time positions agree.
 
 Ten additional tests bring the suite to 35, covering focal zoom/reversal, bounds/16x limits, degenerate gestures, nearest raw tick/ties, downsampling-independent inspection, empty windows, stable exploration under new ticks, touch coordinate conversion and crosshair alignment. A temporary local-only proxy to the public OHLC endpoint allowed the exported web app to be tested with real API prices and the actual simulator; production API code was unchanged. Populated chart tap/drag, exact price/time tooltips, 2x/4x zoom, zoom-out and Reset were verified in the mobile web preview. Web/iOS bundles build. Physical two-finger pinch and native gesture smoothness still need verification on a device.
+
+
+## Step 5: local buy/sell
+
+Stock detail has Buy/Sell actions and a keyboard-aware bottom sheet. Quantity must be a positive safe whole number; decimals, exponent notation, negatives, zero and unsafe values are rejected. Selling more shares than held is blocked, Max selects the current quantity, and an unavailable/non-positive quote disables trading. The estimated value follows live prices. Confirmation reads the latest quote again in the store, revalidates the latest holding and publishes the complete updated holdings array synchronously. A request ID and a synchronous UI guard make repeated confirmations idempotent. The receipt captures the actual fill price/value; it does not change with later ticks. All orders are local simulation; no broker endpoint is called.
+
+`src/domain/trading.ts` contains pure input validation, transaction calculations and an injected-quote execution store. `src/state/holdings.ts` connects that store to React and the shared quote feed. Seed holdings are read only once. Portfolio rows, sorting, summary, detail positions and trade controls now use the same holdings store. Unchanged positions retain object identity, so a trade does not invalidate every row's props.
+
+On a buy, cost basis increases by `quantity * fill price` and average cost is `new basis / new quantity`. The stored average may contain fractions of a paise; it is rounded only when displayed. The displayed average times quantity may therefore differ slightly from the exact invested amount. Summary invested/P&L values use the explicit cost basis and reconcile exactly with the row money amounts. Partial sells preserve average acquisition price and round the proportional remaining basis once to integer paise using BigInt division, avoiding floating-point ratio errors. A full sell removes the holding; rebuying starts a new position. Summary is for current holdings: realized sale P&L and cash balances are not tracked. Today's change remains the documented current-quantity versus previous-close calculation.
+
+Trades and receipts are session-only and reset to the bundled holdings when the app restarts. Only the watchlist is persisted, as explicitly required by the brief. Order history, fees, account cash and cross-device sync are outside the core scope. While the feed is paused, simulated orders may fill at the last received price; the sheet discloses this. No price is fabricated if a quote is missing.
+
+Sixteen transaction tests bring the suite to 51, covering strict quantities, repeated weighted buys, partial/full sells, exact half-paise/large-value allocation, overselling, missing/invalid prices, safe-integer limits, latest-price fills, atomic publication, idempotence, failure recovery, reference isolation, new/rebought positions and row/summary reconciliation. With real OHLC-seeded simulated prices in the local web proxy preview, UI checks covered invalid fractional quantity, buy 25→27 shares, oversized sale rejection, partial sell preserving the average, Max/full sell, portfolio row/count removal, exact invested-total reconciliation, OLDCO protection and creation of a new watched-stock position. The iOS bundle builds; native keyboard, device gestures and profiling remain unverified.

@@ -3,6 +3,15 @@ import { StyleSheet } from 'react-native';
 // Generous radii, thin outlines and bold type follow the supplied Liquide screens.
 export const styles = StyleSheet.create({
   screen: { flex: 1 },
+  expandedHeader: {
+    paddingTop: 80,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  listHeaderContent: { paddingHorizontal: 18, paddingTop: 18 },
+  rowContainer: { paddingHorizontal: 18 },
+  loadingPlaceholder: { paddingVertical: 64, alignItems: 'center', gap: 12 },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 22 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 28 },
   brandMark: {

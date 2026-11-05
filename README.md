@@ -20,7 +20,7 @@ npm test
 
 ## Step 1: portfolio and feed foundation
 
-Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; system light/dark colors; Indian currency formatting.
+Implemented: all starting holdings; OHLC startup fetch and manual refresh; response validation and timeout; independent socket-shaped simulator; sequence rejection; partial updates; per-symbol row subscriptions; portfolio summary; symbol filtering; loading, empty-filter, error/retry, and paused states; reference-matched dark colors (light palette retained); Indian currency formatting.
 
 Still to implement: sorting, watchlist/persistence/swipe removal, stock navigation/detail/chart, buy/sell sheet and transaction calculations, accessibility refinement, profiler/device verification, submission recording. No stretch goals yet.
 
@@ -63,6 +63,13 @@ Keep components focused on one responsibility. Give lifecycle/timing values expl
 
 ## Visual reference
 
-The UI follows the user-provided Liquide screenshots: black backgrounds, charcoal surfaces, fine outlines, large rounded corners, bold headings, warm gold/orange actions, and green/red price changes. Shared colors live in `src/theme/theme.ts`; shared search and gradient button components live in `src/components/`. Light mode follows the same hierarchy on white/neutral surfaces. System safe areas are handled by `SafeAreaProvider` and `SafeAreaView`.
+The UI matches the user-provided Liquide screenshots: black backgrounds, charcoal cards, white text, fine outlines, rounded corners, and yellow-to-orange actions. Per the latest user instruction, dark mode is the default regardless of device appearance. The light palette is retained in the theme module; restoring automatic system selection remains necessary if submitting against the original brief unchanged. Shared colors live in `src/theme/theme.ts`; shared search and theme-colored gradient button components live in `src/components/`. The retained light palette uses white/neutral surfaces. System safe areas are handled by `SafeAreaProvider` and `SafeAreaView`.
 
 The portfolio layout was visually inspected in a 390 × 844 web preview in dark mode. The API request failed in that browser preview, so error/retry and unavailable-price states were inspected; populated live-price layout and native performance still need device verification. Reference-only features (broker linking, advice, subscriptions, research scores) are outside this assignment's implementation.
+
+
+## Scroll-linked header
+
+`PortfolioHeader.tsx` implements the pinned toolbar from the supplied video. The expanded title/status surface scrolls with the list and fades over the first 140 points. The toolbar backdrop simultaneously fades to black, with a short gradient at its lower edge. Scrolling back to the top reverses the transition directly. Feed status remains visible in the pinned toolbar even after the expanded header is gone.
+
+One stable `Animated.Value` connects `Animated.FlatList` scroll events to opacity interpolations. Android/iOS use the native driver; web uses the JS driver. No React state updates are performed per scroll frame. Keep animation tuning in `TOOLBAR_HEIGHT` / `HEADER_FADE_DISTANCE`; if changing toolbar height, update expanded-header spacing too. Forward/reverse transitions were visually checked in a 390 × 844 web preview. Native smoothness still needs device verification.

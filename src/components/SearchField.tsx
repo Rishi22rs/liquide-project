@@ -19,7 +19,7 @@ export function SearchField({ value, onChangeText, theme }: Props) {
         onChangeText={onChangeText}
         autoCapitalize="characters"
         autoCorrect={false}
-        selectionColor={theme.gold}
+        selectionColor={theme.primary}
         style={[styles.input, { color: theme.text }]}
       />
       {value.length > 0 && (

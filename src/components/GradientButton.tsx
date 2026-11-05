@@ -4,7 +4,7 @@ import type { Theme } from '../theme/theme';
 
 type Props = { label: string; onPress: () => void; theme: Theme };
 
-/** Reusable warm action button, matching the reference's yellow-to-orange fill. */
+/** Reusable gradient action button using the shared brand colors. */
 export function GradientButton({ label, onPress, theme }: Props) {
   return (
     <Pressable

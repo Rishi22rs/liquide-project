@@ -113,3 +113,31 @@ export function money(paise: number | undefined): string {
 export function percent(value: number | undefined): string {
   return value === undefined ? '--' : `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
+
+export type HoldingSortKey = 'name' | 'value' | 'pnl';
+export type SortDirection = 'ascending' | 'descending';
+
+/** Never mutate the source holdings: their identities are also used by memoized rows. */
+export function sortHoldings(
+  holdings: readonly Holding[],
+  quotes: Readonly<Record<string, Quote>>,
+  sortKey: HoldingSortKey,
+  direction: SortDirection,
+): readonly Holding[] {
+  const multiplier = direction === 'ascending' ? 1 : -1;
+
+  return [...holdings].sort((left, right) => {
+    const bySymbol = left.symbol.localeCompare(right.symbol);
+    if (sortKey === 'name') return bySymbol * multiplier;
+
+    const leftAmount = position(left, quotes[left.symbol])[sortKey];
+    const rightAmount = position(right, quotes[right.symbol])[sortKey];
+
+    // Missing is different from zero. Unpriced positions always come last,
+    // even when sorting losses first; tied amounts use a stable symbol order.
+    if (leftAmount === undefined && rightAmount === undefined) return bySymbol;
+    if (leftAmount === undefined) return 1;
+    if (rightAmount === undefined) return -1;
+    return (leftAmount - rightAmount) * multiplier || bySymbol;
+  });
+}

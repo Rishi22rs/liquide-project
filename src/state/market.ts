@@ -29,25 +29,30 @@ function notifySubscribers(): void {
   }
 }
 
-function subscribe(listener: () => void): () => void {
+export function subscribeToMarket(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
+/** Read-only snapshot for derived subscriptions, such as the sorted symbol order. */
+export function getQuotesSnapshot(): Readonly<Record<string, Quote>> {
+  return quotes;
+}
+
 /** A row reads one quote; unrelated quotes retain their object identity. */
 export function useQuote(symbol: string): Quote | undefined {
-  return useSyncExternalStore(subscribe, () => quotes[symbol]);
+  return useSyncExternalStore(subscribeToMarket, () => quotes[symbol]);
 }
 
 /** Use only for views, such as the summary, that need every price update. */
 export function useQuotes(): Readonly<Record<string, Quote>> {
-  return useSyncExternalStore(subscribe, () => quotes);
+  return useSyncExternalStore(subscribeToMarket, () => quotes);
 }
 
 export function useMarketStatus(): MarketStatus {
-  return useSyncExternalStore(subscribe, () => status);
+  return useSyncExternalStore(subscribeToMarket, () => status);
 }
 
 function stopFeed(): void {

@@ -9,6 +9,9 @@ import {
   type NativeScrollEvent,
 } from 'react-native';
 import { SearchField } from '../../components/SearchField';
+import type { HoldingSortKey, SortDirection } from '../../domain/portfolio';
+import { HoldingSortControls } from './HoldingSortControls';
+import { useSortedHoldings } from './useSortedHoldings';
 import { HOLDINGS } from '../../data/holdings';
 import { loadMarket, useMarketStatus } from '../../state/market';
 import type { Theme } from '../../theme/theme';
@@ -23,15 +26,24 @@ type Props = {
   expandedHeader: ReactNode;
 };
 
-// This child does not subscribe to quotes: stable list data prevents parent updates on ticks.
+// Numeric sorting subscribes to order changes; price cells remain independently subscribed.
 export function HoldingsList({ theme, onScroll, expandedHeader }: Props) {
   const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState<HoldingSortKey>('name');
+  const [direction, setDirection] = useState<SortDirection>('ascending');
   const status = useMarketStatus();
-  const data = useMemo(
+  const filteredHoldings = useMemo(
     () =>
       HOLDINGS.filter((holding) => holding.symbol.includes(query.trim().toUpperCase())),
     [query],
   );
+  const data = useSortedHoldings(filteredHoldings, sortKey, direction);
+
+  function selectSort(key: HoldingSortKey) {
+    setSortKey(key);
+    setDirection(key === 'name' ? 'ascending' : 'descending');
+  }
+
   return (
     <Animated.FlatList
       data={status.loading ? [] : data}
@@ -72,6 +84,17 @@ export function HoldingsList({ theme, onScroll, expandedHeader }: Props) {
                 </View>
               </View>
               <SearchField value={query} onChangeText={setQuery} theme={theme} />
+              <HoldingSortControls
+                sortKey={sortKey}
+                direction={direction}
+                onSelect={selectSort}
+                onToggleDirection={() =>
+                  setDirection((current) =>
+                    current === 'ascending' ? 'descending' : 'ascending',
+                  )
+                }
+                theme={theme}
+              />
               <View style={styles.section}>
                 <Text style={[styles.caption, { color: theme.muted }]}>
                   SYMBOL / POSITION

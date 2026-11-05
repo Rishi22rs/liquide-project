@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -25,6 +26,7 @@ type Props = NativeStackScreenProps<RootStackParams, 'StockDetail'>;
 export function StockDetailScreen({ route, navigation }: Props) {
   const { symbol } = route.params;
   const theme = useTheme();
+  const [chartInteracting, setChartInteracting] = useState(false);
   const quote = useQuote(symbol);
   const status = useMarketStatus();
   const watchlist = useWatchlist();
@@ -89,6 +91,7 @@ export function StockDetailScreen({ route, navigation }: Props) {
         )}
       </View>
       <ScrollView
+        scrollEnabled={!chartInteracting}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
@@ -192,6 +195,7 @@ export function StockDetailScreen({ route, navigation }: Props) {
         <LiveTickChart
           key={symbol}
           symbol={symbol}
+          onInteractionChange={setChartInteracting}
           available={quote?.ltp !== undefined}
           theme={theme}
         />

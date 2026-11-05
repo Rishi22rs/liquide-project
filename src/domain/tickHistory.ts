@@ -1,3 +1,5 @@
+import type { ChartTimeWindow } from './chartInteraction';
+
 export type PriceTick = Readonly<{ symbol: string; price: number; receivedAt: number }>;
 export type ChartPoint = Readonly<{ price: number; receivedAt: number }>;
 
@@ -60,7 +62,12 @@ export function sampleChartPoints(
 }
 
 /** Convert paise/time values into SVG coordinates; constant prices stay centered. */
-export function buildTickChart(points: readonly ChartPoint[], width = 320, height = 180) {
+export function buildTickChart(
+  points: readonly ChartPoint[],
+  width = 320,
+  height = 180,
+  timeWindow?: ChartTimeWindow,
+) {
   if (points.length === 0) return undefined;
   const first = points[0]!;
   const last = points[points.length - 1]!;
@@ -71,23 +78,21 @@ export function buildTickChart(points: readonly ChartPoint[], width = 320, heigh
     maximum = Math.max(maximum, point.price);
   }
   const sampled = sampleChartPoints(points);
-  const padding = 10;
-  const duration = last.receivedAt - first.receivedAt;
-  const range = maximum - minimum;
-  const coordinates = sampled.map((point, index) => ({
-    x:
-      sampled.length === 1
-        ? width / 2
-        : padding +
-          (duration > 0
-            ? (point.receivedAt - first.receivedAt) / duration
-            : index / (sampled.length - 1)) *
-            (width - 2 * padding),
-    y:
-      range === 0
-        ? height / 2
-        : height - padding - ((point.price - minimum) / range) * (height - 2 * padding),
-  }));
+  const bounds = {
+    minimum,
+    maximum,
+    startTime: timeWindow?.start ?? first.receivedAt,
+    endTime: timeWindow?.end ?? last.receivedAt,
+    width,
+    height,
+  };
+  const coordinates = sampled.map((point, index) =>
+    chartPointCoordinate(
+      point,
+      bounds,
+      sampled.length === 1 ? 0.5 : index / (sampled.length - 1),
+    ),
+  );
   const line = coordinates
     .map(
       (point, index) =>
@@ -97,5 +102,48 @@ export function buildTickChart(points: readonly ChartPoint[], width = 320, heigh
   const start = coordinates[0]!;
   const end = coordinates[coordinates.length - 1]!;
   const area = `${line} L${end.x.toFixed(2)},${height} L${start.x.toFixed(2)},${height} Z`;
-  return { line, area, end, minimum, maximum, first, last, sampleCount: sampled.length };
+  return {
+    line,
+    area,
+    end,
+    minimum,
+    maximum,
+    first,
+    last,
+    sampleCount: sampled.length,
+    bounds,
+  };
+}
+
+type ChartCoordinateBounds = {
+  minimum: number;
+  maximum: number;
+  startTime: number;
+  endTime: number;
+  width: number;
+  height: number;
+};
+
+/** Shared by the curve and crosshair so the selected dot lands at the real price. */
+export function chartPointCoordinate(
+  point: ChartPoint,
+  bounds: ChartCoordinateBounds,
+  fallbackFraction = 0.5,
+) {
+  const duration = bounds.endTime - bounds.startTime;
+  const range = bounds.maximum - bounds.minimum;
+  return {
+    x:
+      10 +
+      (duration > 0
+        ? (point.receivedAt - bounds.startTime) / duration
+        : fallbackFraction) *
+        (bounds.width - 20),
+    y:
+      range === 0
+        ? bounds.height / 2
+        : bounds.height -
+          10 -
+          ((point.price - bounds.minimum) / range) * (bounds.height - 20),
+  };
 }

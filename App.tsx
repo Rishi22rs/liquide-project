@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { ThemeRippleProvider } from './src/theme/ThemeRippleProvider';
 import { Appearance, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { themePreference, useThemeMode } from './src/state/themePreference';
@@ -34,10 +33,8 @@ export default function App() {
   return (
     <SafeAreaProvider style={{ backgroundColor: theme.bg }}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-      <ThemeRippleProvider>
-        <AppNavigator />
-        {__DEV__ && <SimulatorDevMenu />}
-      </ThemeRippleProvider>
+      <AppNavigator />
+      {__DEV__ && <SimulatorDevMenu />}
     </SafeAreaProvider>
   );
 }

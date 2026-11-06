@@ -45,7 +45,6 @@ export function createThemePreference(storage: Storage) {
       })();
       return loading;
     },
-    select,
     toggle() {
       select(mode === 'dark' ? 'light' : 'dark');
     },

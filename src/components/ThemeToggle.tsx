@@ -1,27 +1,21 @@
-import { useRef, type ComponentRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { useThemeMode } from '../state/themePreference';
-import { useThemeTransition } from '../theme/ThemeTransitionContext';
+import { themePreference, useThemeMode } from '../state/themePreference';
 import { useTheme } from '../theme/theme';
 
 /** One compact switch replaces the live-status pill; both glyphs stay visible
  * so the current appearance and the alternative are clear without a text label. */
 export function ThemeToggle() {
   const mode = useThemeMode();
-  const anchor = useRef<ComponentRef<typeof View>>(null);
-  const { busy, toggleAt } = useThemeTransition();
   const theme = useTheme();
   return (
     <Pressable
-      ref={anchor}
-      disabled={busy}
       accessibilityRole="switch"
       aria-checked={mode === 'dark'}
       accessibilityLabel="Dark mode"
-      accessibilityState={{ checked: mode === 'dark', disabled: busy }}
+      accessibilityState={{ checked: mode === 'dark' }}
       accessibilityHint={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
-      onPress={() => toggleAt(anchor)}
+      onPress={themePreference.toggle}
       style={[styles.switch, { backgroundColor: theme.card, borderColor: theme.line }]}
     >
       <View
@@ -74,12 +68,15 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+    overflow: 'hidden',
   },
   option: {
-    width: 34,
+    width: 32,
     height: 32,
-    borderRadius: 18,
+    borderRadius: 16,
+    overflow: 'hidden',
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },

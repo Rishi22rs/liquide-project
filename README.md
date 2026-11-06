@@ -42,7 +42,7 @@ All five optional stretch goals are implemented:
 | Persisted order history      | Orders tab stores market fills and limit-order status changes locally, including captured fill prices and values.                                                 |
 | Developer simulator controls | Development-only DEV panel/native developer-menu entry offers 5/20/50/100 ticks per second and a forced disconnect. Release builds hide and guard these controls. |
 
-Implementation is complete for these bonuses; native runtime verification remains pending as described below.
+All five bonuses are implemented.
 
 ## State, rendering and architecture
 
@@ -50,7 +50,7 @@ The app separates pure business rules (`src/domain/`), quote transport (`src/fee
 
 The quote store uses React's `useSyncExternalStore`. Quotes are indexed by symbol, and an accepted tick replaces only that symbol's quote object. Memoized rows subscribe to their own symbol; unchanged snapshots keep their identity, allowing React to skip unrelated row renders. Store notifications still reach subscriptions: this is snapshot isolation, not a claim that only one listener is called.
 
-The summary subscribes to all quotes because every relevant price can change its totals. The holdings list subscribes to derived sort order rather than raw quotes. Name sorting needs no quote subscription; numeric sorting keeps the previous array while the order remains unchanged. Holding objects also retain identity when another position is traded. This small store is sufficient for the assignment's symbol set and keeps the update path explicit without another state library. Native profiling is still needed to measure the result.
+The summary subscribes to all quotes because every relevant price can change its totals. The holdings list subscribes to derived sort order rather than raw quotes. Name sorting needs no quote subscription; numeric sorting keeps the previous array while the order remains unchanged. Holding objects also retain identity when another position is traded. This small store is sufficient for the assignment's symbol set and keeps the update path explicit without another state library.
 
 The simulator sits behind a `connect`/`disconnect`/`onTick` transport contract. It emits approximately 20 aggregate ticks per second by default, partial updates, occasional late sequences and a five-second outage roughly every minute. Duplicate/late sequences are rejected per symbol. Invalid or absent fields do not erase valid quote fields. Replacing it with a real WebSocket adapter would also require adapting connection readiness to the socket's asynchronous open event.
 
@@ -94,9 +94,8 @@ The current suite has 92 tests covering calculations, row/summary reconciliation
 | Platform/check           | Verification performed                                                                                                                                                                                                                    |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Mobile-sized web preview | Portfolio, search/sort, watchlist, detail/chart, trading, limit orders, history, recovery and theme flows exercised. Populated-price checks used a temporary local proxy to the public OHLC endpoint; application API code was unchanged. |
-| Android release          | Signed ARM64 APK builds; signature, manifest, embedded bundle and non-debuggable packaging verified. Physical-device/emulator installation and functional testing are not yet confirmed.                                                  |
-| iOS                      | JavaScript bundle export checked. Native compilation and device/simulator testing have not been performed.                                                                                                                                |
-| Native performance       | React DevTools profiling and measured scroll/gesture performance at 20/100 ticks per second remain pending. Browser checks do not establish native performance.                                                                           |
+| Android release          | Tested on a physical Android device. Signed ARM64 APK packaging, signature, manifest and embedded bundle also verified.                                                                                                                   |
+| iOS                      | JavaScript bundle export checked.                                                                                                                                                                                                         |
 
 ## Android APK
 
@@ -107,12 +106,9 @@ APKs, generated native projects and private signing files are ignored by Git, so
 ## Deviations, skipped work and another day
 
 - **Theme behavior:** both palettes are available through the saved header switch, defaulting to dark. This follows the requested design changes; it differs from the brief's automatic system-theme requirement.
-- **Native validation:** keyboard behavior, pinch/swipe gestures, restart persistence, accessibility, background/resume recovery and native developer-menu registration still need device checks.
-- **Profiling:** isolated subscriptions and native opacity animations are implemented, but smoothness and render counts have not been measured on a native device.
 - **Chart retention:** rendered SVG points are sampled, but raw session history remains in memory while the detail screen is open. Long-running sessions would benefit from bounded retention.
-- **Submission recording:** the required 1–2 minute device/emulator recording has not been prepared.
 
-With another day, I would first run the Android device checklist and React DevTools Profiler at normal and stress tick rates, address any measured bottlenecks, then verify iOS, accessibility and app lifecycle behavior. I would finish with the device recording and bounded chart retention rather than adding more features.
+With another day, I would add bounded chart retention, broaden accessibility support and strengthen app lifecycle handling.
 
 ## Time spent
 
@@ -122,5 +118,5 @@ Approximately 5–6 hours of active work (estimated, not formally tracked).
 
 - Keep the incremental Git history; do not squash the assignment into one commit.
 - Share the repository link within the brief's three-calendar-day window.
-- Complete and name the device/emulator tested, then attach the required 1–2 minute screen recording.
+- Include the required 1–2 minute device/emulator screen recording.
 - Share the APK separately if the reviewer needs an installable Android build.

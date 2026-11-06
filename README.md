@@ -63,14 +63,14 @@ Keep components focused on one responsibility. Give lifecycle/timing values expl
 
 ## Visual reference
 
-The UI matches the user-provided Liquide screenshots: black backgrounds, charcoal cards, white text, fine outlines, rounded corners, and yellow-to-orange actions. Per the latest user instruction, dark mode is the default regardless of device appearance. The light palette is retained in the theme module; restoring automatic system selection remains necessary if submitting against the original brief unchanged. Shared colors live in `src/theme/theme.ts`; shared search and theme-colored gradient button components live in `src/components/`. The retained light palette uses white/neutral surfaces. System safe areas are handled by `SafeAreaProvider` and `SafeAreaView`.
+The UI matches the user-provided Liquide screenshots: black backgrounds, charcoal cards, white text, fine outlines, rounded corners, and yellow-to-orange actions. Dark mode is the initial default; the header sun/moon switch selects light or dark and remembers the explicit choice locally. The app currently uses this saved manual preference rather than automatically following device appearance. Shared colors live in `src/theme/theme.ts`; shared search and theme-colored gradient button components live in `src/components/`. The retained light palette uses white/neutral surfaces. System safe areas are handled by `SafeAreaProvider` and `SafeAreaView`.
 
 The portfolio layout was visually inspected in a 390 × 844 web preview in dark mode. The API request failed in that browser preview, so error/retry and unavailable-price states were inspected; populated live-price layout and native performance still need device verification. Reference-only features (broker linking, advice, subscriptions, research scores) are outside this assignment's implementation.
 
 
 ## Scroll-linked header
 
-`PortfolioHeader.tsx` implements the pinned toolbar from the supplied video. The expanded title/status surface scrolls with the list and fades over the first 140 points. The toolbar backdrop simultaneously fades to black, with a short gradient at its lower edge. Scrolling back to the top reverses the transition directly. Feed status remains visible in the pinned toolbar even after the expanded header is gone.
+`PortfolioHeader.tsx` implements the pinned toolbar from the supplied video. The expanded title/status surface scrolls with the list and fades over the first 140 points. The toolbar backdrop simultaneously fades to the current theme background, with a short gradient at its lower edge. Scrolling back to the top reverses the transition directly. The theme switch remains visible in the pinned toolbar even after the expanded header is gone. Prices paused is shown beside the brand during a feed interruption; the live-status text has been removed from app headers.
 
 One stable `Animated.Value` connects `Animated.FlatList` scroll events to opacity interpolations. Android/iOS use the native driver; web uses the JS driver. No React state updates are performed per scroll frame. Keep animation tuning in `TOOLBAR_HEIGHT` / `HEADER_FADE_DISTANCE`; if changing toolbar height, update expanded-header spacing too. Forward/reverse transitions were visually checked in a 390 × 844 web preview. Native smoothness still needs device verification.
 
@@ -203,3 +203,19 @@ The local native project was generated with `npx expo prebuild --platform androi
 The Expo placeholders were replaced with an original gold L monogram on charcoal. Editable SVG sources and a launcher-mask preview live in `assets/brand/`; the app has an opaque main icon, transparent Android adaptive foreground, dark adaptive background, monochrome themed-icon mask and matching favicon.
 
 The rebuilt APK is `builds/LiquidePortfolio-1.0.0-v2-arm64-release.apk`, version code 2. It uses the same package ID and signing certificate as the first APK, allowing an in-place update. The embedded launcher icon/adaptive layers, release manifest, bundled JavaScript and signature were checked. The previous APK remains in `builds/` for reference.
+
+
+## Header light/dark switch
+
+A shared sun/moon switch replaces the Simulated live text in Portfolio, Watchlist, Orders and Stock detail headers. Prices paused remains visible during outages. All screens, sheets, navigation/tab surfaces and system status-bar icons use the selected palette. Native Appearance is updated to match the manual selection; the web preview applies the palette without calling the unsupported native Appearance setter. App configuration allows automatic native appearance, with the explicit in-app choice applied at runtime. The initial default stays dark as requested.
+
+`src/domain/themePreference.ts` owns the tiny injected-storage preference store, with the AsyncStorage adapter in `src/state/themePreference.ts`. Palette objects remain stable between price ticks. Switching appearance does not restart the feed or reset navigation/search/chart state. Reads cannot overwrite a user's newer tap, writes serialize rapid toggles, and appearance remains usable if preference storage fails. Four new tests bring the suite to 92. Mobile web checks covered both palettes, header alignment, navigation across tabs/detail and restoration after reload. The update is packaged as Android release version code 3; native appearance/status-bar behavior still needs device verification.
+
+
+## Circular theme reveal
+
+Theme changes expand outward from the measured header switch over 520 ms. Native `ThemeRippleProvider.tsx` captures only the current app view with Expo-compatible react-native-view-shot, waits for that image to decode, then reveals the real new-themed UI through an expanding SVG mask. Prices and order matching keep running underneath. The SVG radius uses the JS Animated driver (it is not a supported native-driver style property), so native smoothness still needs profiling. The temporary capture is released when the reveal finishes or the provider unmounts; it is not saved to order history or uploaded. Input is briefly blocked during the reveal to avoid acting on frozen pixels. Capture/decode timeouts fall back to a normal switch.
+
+The web adapter uses the browser's [View Transition API](https://developer.chrome.com/docs/web-platform/view-transitions/same-document) and a circular clip from the same anchor. Reduced Motion skips animation; unsupported browser APIs fall back to an immediate switch. Both paths preserve the selected target and ignore repeated taps until completion. Three geometry/target tests bring the suite to 95. Both reveal directions and unlocking were visually checked in the mobile web preview; native animation still needs checking on the device.
+
+Latest installable artifact: `builds/LiquidePortfolio-1.0.0-v3-arm64-release.apk` (version code 3), with the header switch and ripple reveal. Release signature, embedded bundle, linked native capture module and manifest were verified. It shares the prior APKs' signing certificate/package for in-place installation.

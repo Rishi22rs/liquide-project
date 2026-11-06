@@ -1,4 +1,5 @@
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { LinearGradient } from 'expo-linear-gradient';
 import { openSimulatorControls } from '../../state/developerMenu';
 import { useMarketStatus } from '../../state/market';
@@ -11,15 +12,9 @@ export const HEADER_FADE_DISTANCE = 140;
 
 type Props = { scrollY: Animated.Value; theme: Theme };
 
-/** A pinned toolbar whose dark backdrop fades in as the large header scrolls away. */
+/** A pinned toolbar whose themed backdrop fades in as the large header scrolls away. */
 export function PortfolioHeader({ scrollY, theme }: Props) {
   const status = useMarketStatus();
-  const statusLabel = status.loading
-    ? 'Connecting'
-    : status.paused
-      ? 'Prices paused'
-      : 'Simulated live';
-  const statusColor = status.paused || status.loading ? theme.accentText : theme.gain;
   const backdropOpacity = scrollY.interpolate({
     inputRange: [0, HEADER_FADE_DISTANCE],
     outputRange: [0, 1],
@@ -39,7 +34,16 @@ export function PortfolioHeader({ scrollY, theme }: Props) {
         <View style={[styles.brandMark, { backgroundColor: theme.accent }]}>
           <Text style={[styles.brandLetter, { color: theme.accentText }]}>L</Text>
         </View>
-        <Text style={[styles.brandName, { color: theme.text }]}>liquide</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.brandName, { color: theme.text, flex: 0 }]}>liquide</Text>
+          {status.paused && (
+            <Text
+              style={[headerStyles.statusText, { color: theme.accentText, marginTop: 3 }]}
+            >
+              Prices paused
+            </Text>
+          )}
+        </View>
         {__DEV__ && (
           <Pressable
             accessibilityRole="button"
@@ -56,17 +60,7 @@ export function PortfolioHeader({ scrollY, theme }: Props) {
             </Text>
           </Pressable>
         )}
-        <View
-          style={[
-            headerStyles.statusPill,
-            { borderColor: theme.line, backgroundColor: theme.card },
-          ]}
-        >
-          <View style={[headerStyles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[headerStyles.statusText, { color: statusColor }]}>
-            {statusLabel}
-          </Text>
-        </View>
+        <ThemeToggle />
       </View>
       {/* A short gradient softens the edge where scrolling content disappears. */}
       <Animated.View
@@ -105,16 +99,6 @@ const headerStyles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
   },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  statusDot: { width: 5, height: 5, borderRadius: 3 },
   statusText: { fontSize: 10, fontWeight: '600', letterSpacing: 0.1 },
   fadeEdge: { position: 'absolute', left: 0, right: 0, bottom: -16, height: 16 },
 });

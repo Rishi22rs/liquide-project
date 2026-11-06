@@ -1,3 +1,5 @@
+import { useThemeMode } from '../state/themePreference';
+
 // Match the supplied Liquide screenshots: black, charcoal, white and warm gold.
 // Components use semantic roles so future palette changes stay in this file.
 const light = {
@@ -50,10 +52,10 @@ const dark: Theme = {
 
 export type Theme = typeof light;
 
-// Keep both palettes available, but default to the dark reference as requested.
+// Stable palettes keep row props unchanged between price ticks.
 export const themes = { light, dark };
 
 // A stable palette preserves memoized row props across price ticks.
 export function useTheme(): Theme {
-  return themes.dark;
+  return themes[useThemeMode()];
 }

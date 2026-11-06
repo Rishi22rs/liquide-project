@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { GradientButton } from '../../components/GradientButton';
 import { loadMarket, useMarketStatus } from '../../state/market';
 import { useWatchlist, watchlistStore } from '../../state/watchlist';
@@ -24,12 +25,6 @@ export function WatchlistScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const loading = !watchlist.hydrated;
   const editable = !loading && !watchlist.loadFailed;
-  const statusColor = market.paused || market.loading ? theme.accentText : theme.gain;
-  const statusLabel = market.loading
-    ? 'Connecting'
-    : market.paused
-      ? 'Prices paused'
-      : 'Simulated live';
 
   return (
     <SafeAreaView
@@ -41,11 +36,11 @@ export function WatchlistScreen() {
           <Text style={[styles.eyebrow, { color: theme.accentText }]}>
             YOUR MARKET RADAR
           </Text>
-          <View style={styles.status}>
-            <View style={[styles.dot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-          </View>
+          <ThemeToggle />
         </View>
+        {market.paused && (
+          <Text style={[styles.caption, { color: theme.accentText }]}>Prices paused</Text>
+        )}
         <View style={styles.headerTop}>
           <View style={styles.flex}>
             <Text style={[styles.title, { color: theme.text }]}>Watchlist</Text>

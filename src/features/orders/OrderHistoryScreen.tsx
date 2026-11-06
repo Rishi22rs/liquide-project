@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { money } from '../../domain/portfolio';
 import type { HistoryEntry } from '../../domain/orderHistory';
 import { useOpenStock } from '../../navigation/useOpenStock';
@@ -37,19 +38,6 @@ function dateTime(time: number): string {
     minute: '2-digit',
     second: '2-digit',
   });
-}
-function FeedStatus({ theme }: { theme: Theme }) {
-  const market = useMarketStatus();
-  return (
-    <Text
-      style={[
-        styles.status,
-        { color: market.paused || market.loading ? theme.accentText : theme.gain },
-      ]}
-    >
-      {market.loading ? 'Connecting' : market.paused ? 'Prices paused' : 'Simulated live'}
-    </Text>
-  );
 }
 const OrderRow = memo(function OrderRow({
   entry,
@@ -150,6 +138,7 @@ const OrderRow = memo(function OrderRow({
 export function OrderHistoryScreen() {
   const theme = useTheme();
   const history = useOrderHistory();
+  const market = useMarketStatus();
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -158,8 +147,11 @@ export function OrderHistoryScreen() {
       <LinearGradient colors={[theme.headerStart, theme.headerEnd]} style={styles.header}>
         <View style={styles.row}>
           <Text style={[styles.eyebrow, { color: theme.accentText }]}>YOUR ACTIVITY</Text>
-          <FeedStatus theme={theme} />
+          <ThemeToggle />
         </View>
+        {market.paused && (
+          <Text style={[styles.caption, { color: theme.accentText }]}>Prices paused</Text>
+        )}
         <Text style={[styles.title, { color: theme.text }]}>Order history</Text>
         <Text style={[styles.subtitle, { color: theme.muted }]}>
           Every simulated order. Saved on this device.

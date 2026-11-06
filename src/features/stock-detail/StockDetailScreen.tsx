@@ -8,9 +8,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LimitOrders } from '../trade/LimitOrders';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { TradeActions } from '../trade/TradeActions';
 import { TradeSheet } from '../trade/TradeSheet';
 import type { TradeSide } from '../../domain/trading';
@@ -44,16 +44,9 @@ export function StockDetailScreen({ route, navigation }: Props) {
       : change.amount >= 0
         ? theme.gain
         : theme.loss;
-  const statusColor = status.paused || status.loading ? theme.accentText : theme.gain;
-  const statusLabel = status.loading
-    ? 'Connecting'
-    : status.paused
-      ? 'Prices paused'
-      : 'Simulated live';
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]}>
-      <StatusBar style="light" />
       <View style={[styles.toolbar, { borderColor: theme.line }]}>
         <Pressable
           accessibilityRole="button"
@@ -65,11 +58,13 @@ export function StockDetailScreen({ route, navigation }: Props) {
         </Pressable>
         <View style={styles.toolbarIdentity}>
           <Text style={[styles.toolbarTitle, { color: theme.text }]}>{symbol}</Text>
-          <View style={styles.status}>
-            <View style={[styles.dot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-          </View>
+          {status.paused && (
+            <Text style={[styles.statusText, { color: theme.accentText }]}>
+              Prices paused
+            </Text>
+          )}
         </View>
+        <ThemeToggle />
         {canWatch && (
           <Pressable
             accessibilityRole="button"

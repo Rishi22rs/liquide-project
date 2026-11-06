@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import { Animated, Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useHoldings } from '../../state/holdings';
 import { GradientButton } from '../../components/GradientButton';
@@ -84,7 +83,6 @@ export function PortfolioScreen() {
       edges={['top', 'left', 'right']}
       style={[styles.screen, { backgroundColor: theme.bg }]}
     >
-      <StatusBar style="light" />
       {/* This relative container anchors the overlay below the safe-area inset. */}
       <View style={styles.screen}>
         <HoldingsList theme={theme} onScroll={onScroll} expandedHeader={expandedHeader} />

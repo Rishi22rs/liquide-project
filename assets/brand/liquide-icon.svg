@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+<radialGradient id="surface" cx=".25" cy=".1" r="1"><stop stop-color="#29272F"/><stop offset=".7" stop-color="#111114"/><stop offset="1" stop-color="#09090B"/></radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#FFE875"/><stop offset=".42" stop-color="#FFC34B"/><stop offset="1" stop-color="#ED9227"/></linearGradient>
+<linearGradient id="light" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFF3B1" stop-opacity=".6"/><stop offset="1" stop-color="#FFE385" stop-opacity="0"/></linearGradient>
+<filter id="shadow" x="-.3" y="-.3" width="1.6" height="1.6"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000000" flood-opacity=".35"/></filter>
+</defs><rect width="1024" height="1024" fill="url(#surface)"/><g filter="url(#shadow)"><path d="M350 274H428Q450 274 450 296V590Q450 610 470 610H662Q684 610 684 632V696Q684 718 662 718H350Q328 718 328 696V296Q328 274 350 274Z" fill="url(#gold)"/></g><path d="M350 274H428Q450 274 450 296V314H328V296Q328 274 350 274Z" fill="url(#light)"/></svg>
